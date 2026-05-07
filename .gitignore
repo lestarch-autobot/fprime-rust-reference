@@ -1,0 +1,30 @@
+# F Prime build directories
+build-fprime-automatic-*/
+build-artifacts/
+*.dict.xml
+
+# CMake / Ninja
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Cargo
+**/target/
+Cargo.lock
+
+# Logs / runtime
+logs/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Data product staging
+DpCat/

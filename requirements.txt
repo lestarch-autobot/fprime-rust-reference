@@ -1,0 +1,3 @@
+# Local requirements for the FprimeRustReference deployment.
+-r ./lib/fprime/requirements.txt
+./lib/fprime-rust/
