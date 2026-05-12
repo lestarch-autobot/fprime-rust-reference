@@ -25,26 +25,14 @@ module FprimeRustReference {
     # Instances used in the topology
     # ----------------------------------------------------------------------
 
-    instance SG1
-    instance SG2
-    instance SG3
-    instance SG4
-    instance SG5
-    instance blockDrv
     instance posixTime
-    instance pingRcvr
     instance rateGroup1Comp
     instance rateGroup2Comp
     instance rateGroup3Comp
     instance rateGroupDriverComp
-    instance recvBuffComp
-    instance sendBuffComp
-    instance typeDemo
     instance systemResources
-    instance dpDemo
     instance linuxTimer
     instance comDriver
-    instance cmdSeq
 
     # The Rust-backed reference component, declared in instances.fpp.
     instance rustExample
@@ -82,36 +70,28 @@ module FprimeRustReference {
       # Linux timer to drive cycle
       linuxTimer.CycleOut -> rateGroupDriverComp.CycleIn
 
-      # Rate group 1
+      # Rate group 1 (10 Hz):  drives the CCSDS plumbing required to push
+      # telemetry, events, and command responses back to fprime-gds.
       rateGroupDriverComp.CycleOut[Ports_RateGroups.rateGroup1] -> rateGroup1Comp.CycleIn
-      rateGroup1Comp.RateGroupMemberOut[0] -> SG1.schedIn
-      rateGroup1Comp.RateGroupMemberOut[1] -> SG2.schedIn
-      rateGroup1Comp.RateGroupMemberOut[2] -> CdhCore.Subtopology.tlmSendRun
-      rateGroup1Comp.RateGroupMemberOut[3] -> FileHandling.Subtopology.fileDownlinkRun
-      rateGroup1Comp.RateGroupMemberOut[4] -> systemResources.run
-      rateGroup1Comp.RateGroupMemberOut[5] -> ComCcsds.Subtopology.comQueueRun
-      rateGroup1Comp.RateGroupMemberOut[6] -> CdhCore.Subtopology.cmdDispRun
-      rateGroup1Comp.RateGroupMemberOut[7] -> ComCcsds.Subtopology.aggregatorTimeout
+      rateGroup1Comp.RateGroupMemberOut[0] -> CdhCore.Subtopology.tlmSendRun
+      rateGroup1Comp.RateGroupMemberOut[1] -> FileHandling.Subtopology.fileDownlinkRun
+      rateGroup1Comp.RateGroupMemberOut[2] -> systemResources.run
+      rateGroup1Comp.RateGroupMemberOut[3] -> ComCcsds.Subtopology.comQueueRun
+      rateGroup1Comp.RateGroupMemberOut[4] -> CdhCore.Subtopology.cmdDispRun
+      rateGroup1Comp.RateGroupMemberOut[5] -> ComCcsds.Subtopology.aggregatorTimeout
 
-      # Rate group 2
+      # Rate group 2 (1 Hz):  bookkeeping for file management.
       rateGroupDriverComp.CycleOut[Ports_RateGroups.rateGroup2] -> rateGroup2Comp.CycleIn
-      rateGroup2Comp.RateGroupMemberOut[0] -> cmdSeq.schedIn
-      rateGroup2Comp.RateGroupMemberOut[1] -> sendBuffComp.SchedIn
-      rateGroup2Comp.RateGroupMemberOut[2] -> SG3.schedIn
-      rateGroup2Comp.RateGroupMemberOut[3] -> SG4.schedIn
-      rateGroup2Comp.RateGroupMemberOut[4] -> dpDemo.run
-      #connection to FileManager listing feature command for sequencing
-      rateGroup2Comp.RateGroupMemberOut[5] -> FileHandling.Subtopology.fileManagerSchedIn
+      rateGroup2Comp.RateGroupMemberOut[0] -> FileHandling.Subtopology.fileManagerSchedIn
 
-      # Rate group 3
+      # Rate group 3 (0.1 Hz): health checking + buffer-pool / data-product
+      # housekeeping.
       rateGroupDriverComp.CycleOut[Ports_RateGroups.rateGroup3] -> rateGroup3Comp.CycleIn
       rateGroup3Comp.RateGroupMemberOut[0] -> CdhCore.Subtopology.healthRun
-      rateGroup3Comp.RateGroupMemberOut[1] -> SG5.schedIn
-      rateGroup3Comp.RateGroupMemberOut[2] -> blockDrv.Sched
-      rateGroup3Comp.RateGroupMemberOut[3] -> ComCcsds.Subtopology.bufferManagerSchedIn
-      rateGroup3Comp.RateGroupMemberOut[4] -> DataProducts.Subtopology.dpBufferManagerSchedIn
-      rateGroup3Comp.RateGroupMemberOut[5] -> DataProducts.Subtopology.dpWriterSchedIn
-      rateGroup3Comp.RateGroupMemberOut[6] -> DataProducts.Subtopology.dpMgrSchedIn
+      rateGroup3Comp.RateGroupMemberOut[1] -> ComCcsds.Subtopology.bufferManagerSchedIn
+      rateGroup3Comp.RateGroupMemberOut[2] -> DataProducts.Subtopology.dpBufferManagerSchedIn
+      rateGroup3Comp.RateGroupMemberOut[3] -> DataProducts.Subtopology.dpWriterSchedIn
+      rateGroup3Comp.RateGroupMemberOut[4] -> DataProducts.Subtopology.dpMgrSchedIn
     }
 
     connections Communications {
@@ -128,27 +108,6 @@ module FprimeRustReference {
       comDriver.ready                 -> ComCcsds.Subtopology.drvConnected
     }
 
-    connections FprimeRustReference {
-      sendBuffComp.Data -> blockDrv.BufferIn
-      blockDrv.BufferOut -> recvBuffComp.Data
-
-      ### Moved this out of DataProducts Subtopology --> anything specific to deployment should live in Ref connections
-      # Synchronous request. Will have both request kinds for demo purposes, not typical
-      SG1.productGetOut -> DataProducts.Subtopology.productGetIn
-      # Asynchronous request
-      SG1.productRequestOut -> DataProducts.Subtopology.productRequestIn
-      DataProducts.Subtopology.productResponseOut -> SG1.productRecvIn
-      # Send filled DP
-      SG1.productSendOut -> DataProducts.Subtopology.productSendIn
-      # Synchronous request
-      dpDemo.productGetOut -> DataProducts.Subtopology.productGetIn
-      # Send filled DP
-      dpDemo.productSendOut -> DataProducts.Subtopology.productSendIn
-      # Asynchronous request
-      dpDemo.productRequestOut -> DataProducts.Subtopology.productRequestIn
-      DataProducts.Subtopology.productResponseOut -> dpDemo.productRecvIn
-    }
-
     connections ComCcsds_CdhCore {
       # Events and telemetry to comQueue
       CdhCore.Subtopology.eventsPktSend  -> ComCcsds.Subtopology.comPacketQueueIn[ComCcsds.Ports_ComPacketQueue.EVENTS]
@@ -157,8 +116,6 @@ module FprimeRustReference {
       # Router <-> CmdDispatcher
       ComCcsds.Subtopology.commandOut        -> CdhCore.Subtopology.seqCmdBuff
       CdhCore.Subtopology.seqCmdStatus       -> ComCcsds.Subtopology.cmdResponseIn
-      cmdSeq.comCmdOut                       -> CdhCore.Subtopology.seqCmdBuff
-      CdhCore.Subtopology.seqCmdStatus       -> cmdSeq.cmdResponseIn
     }
 
     connections ComCcsds_FileHandling {

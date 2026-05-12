@@ -4,6 +4,12 @@
 //! handles the FFI plumbing, dispatch shims, and helper methods on
 //! [`Context`].  Edit this file freely -- the build system will not
 //! overwrite it.
+//!
+//! The helper methods exposed on [`Context`] mirror the protected C++
+//! ``ComponentBase`` API exactly -- ``tlmWrite_<Channel>``,
+//! ``log_<SEVERITY>_<Event>``, ``paramGet_<Param>``, and
+//! ``cmdResponse_out`` -- so the code below reads the same way it would
+//! in a C++ component implementation.
 
 use fprime_rust::CmdResponse;
 use crate::rust_example_base::{Component, Context};
@@ -25,17 +31,17 @@ impl Implementation {
 impl Component for Implementation {
     fn Reset_cmd_handler(&mut self, ctx: &mut Context) {
         self.counter = 0;
-        ctx.tlm_write_Counter(self.counter);
-        ctx.log_ResetIssued();
-        ctx.command_response(CmdResponse::Ok);
+        ctx.tlmWrite_Counter(self.counter);
+        ctx.log_ACTIVITY_LO_ResetIssued();
+        ctx.cmdResponse_out(CmdResponse::Ok);
     }
 
     fn Bump_cmd_handler(&mut self, ctx: &mut Context, amount: u32) {
-        let (threshold, _validity) = ctx.param_Threshold();
+        let (threshold, _validity) = ctx.paramGet_Threshold();
         let next = self.counter.saturating_add(amount).min(threshold);
         self.counter = next;
-        ctx.tlm_write_Counter(self.counter);
-        ctx.log_Bumped(self.counter);
-        ctx.command_response(CmdResponse::Ok);
+        ctx.tlmWrite_Counter(self.counter);
+        ctx.log_ACTIVITY_LO_Bumped(self.counter);
+        ctx.cmdResponse_out(CmdResponse::Ok);
     }
 }

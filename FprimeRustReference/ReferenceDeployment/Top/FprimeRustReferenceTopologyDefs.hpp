@@ -11,7 +11,6 @@
 #ifndef REF_REFTOPOLOGYDEFS_HPP
 #define REF_REFTOPOLOGYDEFS_HPP
 
-#include "FprimeRustReference/Components/BlockDriver/BlockDriver.hpp"
 #include "FprimeRustReference/ReferenceDeployment/Top/FppConstantsAc.hpp"
 
 // Subtopology PingEntries includes
@@ -46,12 +45,6 @@
  * ```
  */
 namespace PingEntries {
-namespace FprimeRustReference_blockDrv {
-enum { WARN = 3, FATAL = 5 };
-}
-namespace FprimeRustReference_pingRcvr {
-enum { WARN = 3, FATAL = 5 };
-}
 namespace FprimeRustReference_rateGroup1Comp {
 enum { WARN = 3, FATAL = 5 };
 }
@@ -59,9 +52,6 @@ namespace FprimeRustReference_rateGroup2Comp {
 enum { WARN = 3, FATAL = 5 };
 }
 namespace FprimeRustReference_rateGroup3Comp {
-enum { WARN = 3, FATAL = 5 };
-}
-namespace FprimeRustReference_cmdSeq {
 enum { WARN = 3, FATAL = 5 };
 }
 }  // namespace PingEntries

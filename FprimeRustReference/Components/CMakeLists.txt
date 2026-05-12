@@ -1,12 +1,7 @@
-# Project-specific components.  RustExample is the fprime-rust demo;
-# the others are inherited unchanged from the upstream Ref deployment so
-# that the topology has a non-trivial set of producers / consumers around
-# the Rust component.
+# Project-specific components.
+#
+# This reference deployment intentionally hosts just one component --
+# ``RustExample`` -- so the topology stays a minimal, narrowly scoped
+# demonstration of the ``fprime-rust`` autocoder.  Real deployments will
+# add their own ``add_fprime_subdirectory`` calls below.
 add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/RustExample")
-add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/BlockDriver")
-add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/DpDemo")
-add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/PingReceiver")
-add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/RecvBuffApp")
-add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/SendBuffApp")
-add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/SignalGen")
-add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/TypeDemo")
