@@ -15,8 +15,15 @@ from pathlib import Path
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--image", required=True, type=Path, help="delivered deployment executable")
+    parser.add_argument("--clear-gcda", type=Path, default=None,
+                        help="coverage run only: delete every *.gcda under this build cache before the run (fresh counters)")
     parser.add_argument("--install", required=True, type=Path, help="install path of the executable (replaced if present)")
     args = parser.parse_args(argv)
+    if args.clear_gcda is not None:
+        n = 0
+        for g in args.clear_gcda.rglob("*.gcda"):
+            g.unlink(); n += 1
+        print(f"cleared {n} .gcda under {args.clear_gcda}")
     if not args.image.is_file():
         print(f"[ERROR] image not found: {args.image}", file=sys.stderr)
         return 1

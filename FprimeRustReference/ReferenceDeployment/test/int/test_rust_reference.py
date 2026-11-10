@@ -17,7 +17,7 @@ what the checks name. ``send`` hands every non-marker command to the planted fau
 import pytest
 
 # ---- dictionary names (FprimeRustReferenceTopologyDictionary.json) -----------------------------
-MARK = "CdhCore.cmdDisp.CMD_NO_OP_STRING"            # plan markers.command; never handed to a planted fault
+MARK = "FprimeRustReference.rustTester.MARK"        # plan markers.command (A16); never handed to a planted fault
 VERSION = "CdhCore.version.VERSION"
 RESET = "FprimeRustReference.rustCounter.RESET"
 BUMP = "FprimeRustReference.rustCounter.BUMP"
@@ -70,7 +70,7 @@ def test_L0_2(window, send, bench, check, require):
                                                           # whose dispatch row precedes its marker event (A5)
         bracket(bench)
         send(MARK, [42])
-        bench.wait_event("cmdDisp.NoOpStringReceived")
+        bench.wait_event("rustTester.Marker")
         bracket(bench)
         check(ABS)
 
@@ -96,7 +96,7 @@ def test_L2_1(window, send, bench, check, require):
         check(ABS)
 
 
-@pytest.mark.req("REQ-FprimeRust-015", "REQ-RustCounter-003", "REQ-RustCounter-006")
+@pytest.mark.req("REQ-FprimeRust-015", "REQ-RustCounter-003", "REQ-RustCounter-006", "REQ-RustCounter-007")
 def test_L2_2(window, send, bench, check, require):
     with window(40, 41):
         require(STD)
@@ -192,7 +192,7 @@ def test_L4_1(window, send, bench, check, require, fth_plan):
 
 # ---- L5: saturation fault path ----------------------------------------------------------
 
-@pytest.mark.req("REQ-FprimeRust-013", "REQ-FprimeRust-015", "REQ-RustCounter-003", "REQ-RustCounter-006")
+@pytest.mark.req("REQ-FprimeRust-013", "REQ-FprimeRust-015", "REQ-RustCounter-003", "REQ-RustCounter-006", "REQ-RustCounter-007")
 def test_L5_1(window, send, bench, check, require):
     with window(90, 91):
         require(STD)

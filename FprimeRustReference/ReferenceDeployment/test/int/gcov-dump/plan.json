@@ -1,0 +1,116 @@
+{
+  "name": "RUST-REF gcov dump — DUMP_COVERAGE walk of the instrumented twin (development evidence, never RfR)",
+  "status": "development",
+  "uut": {
+    "repo": "https://github.com/lestarch-autobot/fprime-rust",
+    "path": "lib/fprime-rust",
+    "branch": "main",
+    "sha": "frozen at DEVELOPMENT exit"
+  },
+  "deployment": {
+    "repo": "https://github.com/lestarch-autobot/fprime-rust-reference",
+    "name": "FprimeRustReference",
+    "executable": "FprimeRustReference",
+    "pins": {
+      "lib/fprime": "nasa/fprime devel b188d185ec46699b5fdc0a0666537896a5ea9d47",
+      "lib/fprime-rust": "https://github.com/lestarch-autobot/fprime-rust.git main"
+    }
+  },
+  "markers": {
+    "command": "rustTester.MARK",
+    "event": "rustTester.Marker",
+    "arg": "id"
+  },
+  "event_patterns": {
+    "rustTester.Marker": "^Marker (?P<id>\\d+)$",
+    "rustTester.CoverageDumpDone": "^coverage dump done: (?P<objects>\\d+) objects, (?P<totalBytes>\\d+) bytes, crc (?P<crc>[0-9a-fA-F]+)$",
+    "rustTester.CoverageObject": "^coverage object (?P<object>\\d+) name-crc (?P<nameCrc>[0-9a-fA-F]+): (?P<bytes>\\d+) bytes$",
+    "rustTester.CoverageRejected": "^coverage dump rejected: (?P<reason>\\w+)$",
+    "rustTester.CoverageUnavailable": "^coverage not compiled into this image$",
+    "cmdDisp.OpCodeError": "Opcode 0x(?P<Opcode>[0-9A-Fa-f]+) completed with error (?P<error>\\w+)$",
+    "cmdDisp.OpCodeDispatched": "^(?P<opCode>Opcode 0x[0-9A-Fa-f]+) dispatched to port (?P<port>\\d+)$",
+    "cmdDisp.OpCodeCompleted": "^(?P<opCode>Opcode 0x[0-9A-Fa-f]+) completed$"
+  },
+  "packets": {
+    "RustReference": [
+      "rustCounter.TickCount"
+    ]
+  },
+  "std_complete": [
+    "both markers present"
+  ],
+  "abs": {
+    "ABS": [
+      "event cmdDisp.MalformedCommand count == 0",
+      "event cmdDisp.InvalidCommand count == 0",
+      "event cmdDisp.TooManyCommands count == 0"
+    ]
+  },
+  "requirements": [],
+  "image_version": {
+    "policy": "waived",
+    "reason": "development dump plan on the instrumented twin; identity is recorded by dev-campaign (image sha256, toolchain), the pure RfR image is judged by the main plan"
+  },
+  "levels": {
+    "D": "coverage dump (development evidence)"
+  },
+  "not_covered": [],
+  "decision_log": [
+    "1. Author (2026-11-10, A19): one-test dump plan per fprime-system-test-harness §3a step 4 — run on the same twin build cache right after the coverage run of the main plan (never delete .gcda between them); the ground paces one DUMP_COVERAGE(start, 8) window per command until CoverageDumpDone; CoverageRejected == 0, no OpCodeError, no dropped events. Markers through rustTester.MARK like the main plan (each MARK also flushes the counters to disk, which is what the chunk-0 window then pages)."
+  ],
+  "tests": [
+    {
+      "id": "D-1",
+      "title": "Coverage dump walk",
+      "purpose": "Pages every gcov object of the twin out through rustTester.DUMP_COVERAGE so fth coverage-system can rebuild the .gcda files and measure the plan's system coverage.",
+      "covers": [],
+      "covers_note": "— (development evidence)",
+      "setup": "Twin (FPRIME_RUST_REFERENCE_COVERAGE=ON) flashed from the same build cache the coverage run used; .gcda files of that run on disk.",
+      "procedure": [
+        "MARK(1)",
+        "DUMP_COVERAGE(0, 8) (flush + snapshot + chunks 0..7)",
+        "DUMP_COVERAGE(start, 8) for start = 8, 16, ... paced, until CoverageDumpDone",
+        "MARK(2)"
+      ],
+      "windows": [
+        {
+          "name": "W",
+          "start_id": 1,
+          "end_id": 2,
+          "reset": false
+        }
+      ],
+      "metrics": [
+        "event rustTester.CoverageRejected count == 0",
+        "event rustTester.CoverageUnavailable count == 0",
+        "event cmdDisp.OpCodeError count == 0"
+      ],
+      "knobs": [],
+      "rationale": [
+        {
+          "pred": "event rustTester.CoverageDumpDone count >= 1",
+          "text": "stimulus-declared: fth 0.1.2's grammar has no >= on event counts, so the test declares `coverage dump done seen` via require/check on the live wait; the record carries the Done event(s) and fth coverage-system refuses a dump without exactly consistent Done/Object/Chunk rows"
+        }
+      ],
+      "evidence": "CoverageDumpDone(objects, totalBytes, crc) at least once; no CoverageRejected; fth coverage-system reassembles N objects with the Done CRC."
+    }
+  ],
+  "coverage": {
+    "ut": {
+      "lines_min": 95,
+      "branches_min": 85,
+      "scope": "what fth judges (T5): gcov/gcovr of the UUT's default-config fixture UT project lib/fprime-rust/tests/project via `fprime-util generate --ut && fprime-util check --all --coverage` (C++ fixtures ActiveFix/PassiveFix/QueuedFix exercising the generated shim and runtime glue, plus the F Prime config headers that project compiles). The Rust crates themselves are not gcov-instrumentable; cargo llvm-cov figures are reported informatively in dev-evidence, never judged against this threshold"
+    },
+    "system": {
+      "lines_min": 75,
+      "scope": "what fth judges (T5): the instrumented twin of FprimeRustReference (CMake option FPRIME_RUST_REFERENCE_COVERAGE=ON, GCC >= 12, separate build cache build-fprime-automatic-native-cov) runs the same plan on the native bench; counters are paged out by rustTester.DUMP_COVERAGE (gcov-dump plan) and measured by `fth coverage-system` with --filter FprimeRustReference/Components/ (hand-written Relay.cpp, RustTester.cpp), --filter lib/fprime-rust/FprimeRust/ (glue) and the twin-cache filter for the generated Rust shim RustCounter.cpp/RustMonitor.cpp with the FPP autocode *Ac.cpp excluded (regex build-fprime-automatic-native-cov/FprimeRustReference/Components/.*/(?!.*Ac\\.cpp$)[^/]*\\.cpp$) — FPP autocode is F Prime's, not the UUT's output. The pure RfR image is the OFF build; the Rust handler bodies are outside gcov's reach [I]"
+    },
+    "not_covered_ack": [
+      "L3 reset/persistence across a process restart: the native bench defines no reset row (R7 names flash, dump, gds only); THRESHOLD persistence is proven by the saved file (L7-1), not by a reload",
+      "REQ-FprimeRust-024 panic-abort path: death test in UT only; never planted in the system run (it would end the record)",
+      "REQ-FprimeRust-017/-034/-035/-036 generation and build failure paths: autocoder/build UT only; the reference deployment models only supported elements",
+      "REQ-FprimeRust-030/-031/-032/-033 (parameterUpdated, internal ports, overflow hooks, port return values) and passive Rust components, guarded ports, sync/guarded commands, ACTIVITY_HI/COMMAND/DIAGNOSTIC/FATAL severities: shim UT only; the reference deployment exercises active + queued, async/sync members and three severities"
+    ],
+    "rationale": "UT baseline 95/85 from fprime-system-test-design; system 75 because the deployment's Svc/Drv framework code shares the executable and only the Rust integration surface is judged"
+  }
+}

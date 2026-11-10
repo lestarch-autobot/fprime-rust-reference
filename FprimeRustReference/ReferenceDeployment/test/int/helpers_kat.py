@@ -21,7 +21,7 @@ from fth.registry import load_helpers_module
 from fth.replay import ChannelRow, EventRow, Record, Window
 
 HERE = Path(__file__).resolve().parent
-MARKER = "cmdDisp.NoOpStringReceived"
+MARKER = "rustTester.Marker"
 HELPERS = load_helpers_module(HERE / "planted_faults.py").helpers
 
 # dev-clean record raw/files/fprime-downlink/PrmDb.dat (17 bytes): CRC32, 0xA5, size 8, id 0x10016000, U32 42
