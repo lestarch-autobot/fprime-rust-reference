@@ -20,7 +20,7 @@ public:
   // ----------------------------------------------------------------------
 
   // Maximum size of histories storing events, telemetry, and port outputs
-  static const FwSizeType MAX_HISTORY_SIZE = 10;
+  static const FwSizeType MAX_HISTORY_SIZE = 32;  // UT-RM-5 records 11 responses and 10 events
 
   // Instance ID supplied to the component instance under test
   static const FwEnumStoreType TEST_INSTANCE_ID = 0;
@@ -53,6 +53,9 @@ public:
   void countsAgainstLimit();
   //! UT-RM-4: run drains the queue before run_handler, RunCount and Limit published
   void runDrainsQueue();
+
+  //! UT-RM-5: eleventh SET_LIMIT on a full queue is answered BUSY by the overflow hook
+  void setLimitBusyOnFullQueue();
 private:
   void run();
 

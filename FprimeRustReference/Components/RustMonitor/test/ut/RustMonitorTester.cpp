@@ -98,4 +98,22 @@ void RustMonitorTester::runDrainsQueue() {
     ASSERT_TLM_RunCount(1, 2);
 }
 
+void RustMonitorTester::setLimitBusyOnFullQueue() {
+    REQUIREMENT("REQ-FprimeRust-032");
+    COMMENT("UT-RM-5: ten SET_LIMITs fill the queue; the eleventh gets BUSY from the Rust overflow hook, no assert; run dispatches the ten");
+    this->clearHistory();
+    for (U32 i = 0; i < TEST_INSTANCE_QUEUE_DEPTH; i++) {
+        this->sendCmd_SET_LIMIT(0, i, i + 1);
+    }
+    ASSERT_CMD_RESPONSE_SIZE(0);
+    this->sendCmd_SET_LIMIT(0, 99, 42);
+    ASSERT_CMD_RESPONSE_SIZE(1);
+    ASSERT_CMD_RESPONSE(0, RustMonitor::OPCODE_SET_LIMIT, 99, Fw::CmdResponse::BUSY);
+    this->run();
+    ASSERT_CMD_RESPONSE_SIZE(TEST_INSTANCE_QUEUE_DEPTH + 1);
+    ASSERT_EVENTS_LimitSet_SIZE(TEST_INSTANCE_QUEUE_DEPTH);
+    ASSERT_EVENTS_LimitSet(TEST_INSTANCE_QUEUE_DEPTH - 1, TEST_INSTANCE_QUEUE_DEPTH);
+}
+
+
 } // namespace FprimeRustReference

@@ -35,10 +35,10 @@ module FprimeRustReference {
     # Commands
     # ----------------------------------------------------------------------
 
-    @ Set the count limit; zero is rejected
+    @ Set the count limit; zero is rejected; on a full queue the overflow hook responds BUSY (no assert)
     async command SET_LIMIT(
       limit: U32 @< New limit, must be non-zero
-    ) opcode 0
+    ) opcode 0 hook
 
     # ----------------------------------------------------------------------
     # Events

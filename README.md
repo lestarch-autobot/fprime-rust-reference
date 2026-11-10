@@ -3,7 +3,7 @@
 Reference deployment that demonstrates the
 [`fprime-rust`](https://github.com/lestarch-autobot/fprime-rust) autocoder by
 hosting two Rust components (`RustCounter`, an active counter with RESET/BUMP commands and a
-`THRESHOLD` parameter; `RustMonitor`, a queued limit monitor with SET_LIMIT) and a C++ `Relay`
+`THRESHOLD` parameter; `RustMonitor`, a queued limit monitor with SET_LIMIT, whose overflow hook answers BUSY on a full queue) and a C++ `Relay`
 between them inside a standard F Prime topology.  The structure mirrors
 [`fprime-python-reference`](https://github.com/fprime-community/fprime-python-reference):
 
