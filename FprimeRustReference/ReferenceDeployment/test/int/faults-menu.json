@@ -52,7 +52,7 @@
         "L2-5": [
           "event rustMonitor.LimitSet(limit=4) count == 1",
           "event rustMonitor.LimitExceeded(count=10, limit=4) count == 1",
-          "delta(rustMonitor.Exceedances) == 1"
+          "rustMonitor.Exceedances advances by 1"
         ]
       },
       "mechanism": "the planned SET_LIMIT(4) is sent as SET_LIMIT(4000): the UUT limit is never exceeded by the count 10; the closing SET_LIMIT(4294967295) restores the limit L6-1 expects",
@@ -68,7 +68,7 @@
       "fails": {
         "L6-1": [
           "event rustMonitor.InvalidLimit(limit=0) count == 1",
-          "event CdhCore.cmdDisp.OpCodeError(error=VALIDATION_ERROR) count == 1",
+          "event cmdDisp.OpCodeError(error=VALIDATION_ERROR) count == 1",
           "event rustMonitor.LimitSet count == 0",
           "delta(rustMonitor.Limit) == 0",
           "last(rustMonitor.Limit) == 4294967295"
@@ -94,7 +94,7 @@
           "event rustCounter.ResetIssued count == 1",
           "last(rustCounter.Counter) == 0",
           "last(rustMonitor.LastCount) == 0",
-          "delta(relay.Relayed) == 1"
+          "relay.Relayed advances by 1"
         ]
       },
       "mechanism": "the planned RESET is replaced by CdhCore.cmdDisp.CMD_NO_OP: no ResetIssued, no count travels the port chain, and in L7-1 the counter stays at 3 (left by L5-1) so Counter is not 0 and no count 0 reaches LastCount (its last sample stays 10 from L2-5); L2-2 opens with its own RESET, so nothing ripples",
@@ -109,13 +109,13 @@
       ],
       "fails": {
         "L7-1": [
-          "event FileHandling.prmDb.PrmFileSaveComplete(records=1) count == 1",
-          "event FileHandling.fileDownlink.FileSent count == 1",
+          "event prmDb.PrmFileSaveComplete(records=1) count == 1",
+          "event fileDownlink.FileSent count == 1",
           "PrmDb.dat record 0x10016000 == 42",
-          "event CdhCore.cmdDisp.OpCodeError count == 0"
+          "event cmdDisp.OpCodeError count == 0"
         ]
       },
-      "mechanism": "the planned FileHandling.prmDb.PRM_SAVE_FILE is replaced by CdhCore.cmdDisp.CMD_NO_OP: the run starts in a fresh run/FprimeRustReference/ with no PrmDb.dat, so the file is never written, PrmFileSaveComplete is absent, SendFile fails with FileOpenError and completes EXECUTION_ERROR (one OpCodeError), no FileSent occurs, no record/raw/files/PrmDb.dat exists and prmdb_record_equals reports FAIL; this is the fault that disturbs the final-state artifact",
+      "mechanism": "the planned FileHandling.prmDb.PRM_SAVE_FILE is replaced by CdhCore.cmdDisp.CMD_NO_OP: the run starts in a fresh run/FprimeRustReference/ with no PrmDb.dat, so the file is never written, PrmFileSaveComplete is absent, SendFile fails with FileOpenError and completes EXECUTION_ERROR (one OpCodeError), no FileSent occurs, no record/raw/files/fprime-downlink/PrmDb.dat exists and prmdb_record_equals reports FAIL; this is the fault that disturbs the final-state artifact",
       "kind": "insert",
       "ripples_to": {}
     },

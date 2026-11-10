@@ -66,6 +66,50 @@ Each build regenerates the C++ shim, the Rust base module (`rustcounter_base.rs`
 linked from one `libfprime_rust_<Deployment>.a`. See the
 [`fprime-rust` README](https://github.com/lestarch-autobot/fprime-rust) for the full design.
 
+## System test harness (fth)
+
+The system-test plan for the reference deployment lives in
+`FprimeRustReference/ReferenceDeployment/test/int/` (`plan.json` + rendered `plan.md`, `planted_faults.py`
+helpers and planted-fault menu, `bench.json` native bench, `test_rust_reference.py` stimulus, one pytest per
+plan test L0-1..L7-1) and runs under the F Prime testing harness `fth` pinned by the campaign
+(`fprime-testing-harness` 855dd4f = v0.1.2). `bench/native_recorder.py` and `bench/native_send.py` adapt
+`fprime-cli` to the record layout `fth` exports (see A3/A4 in the plan's decision log).
+
+```bash
+export PATH="$PWD/venv/bin:/usr/bin:$PATH"          # a conda gcc may shadow /usr/bin
+pip install git+https://github.com/lestarch-autobot/fprime-testing-harness@855dd4f9901469d1d06400fa0759ea8793614f8e
+(cd FprimeRustReference/ReferenceDeployment && fprime-util generate && fprime-util build -j8)
+T=$PWD/FprimeRustReference/ReferenceDeployment/test/int
+OUT=~/campaign-out                                   # run dirs, manifests and images live OUTSIDE the git trees
+mkdir -p $OUT/images $OUT/dev
+cp build-artifacts/Linux/FprimeRustReference_ReferenceDeployment/bin/FprimeRustReference_ReferenceDeployment $OUT/images/FprimeRustReference.bin
+
+# plan + stimulus consistency (helpers bind, every planted-fault `fails` predicate is a declared check)
+fth verify-plan $T/plan.json --tests $T --bench $T/bench.json
+
+# manifest: pinned UUT / fprime / harness trees, plan, menu, bench, stimulus and the image's Svc.Version strings
+cd $OUT/dev && fth manifest --uut $OLDPWD/lib/fprime-rust --harness $OLDPWD --repo fprime=$OLDPWD/lib/fprime \
+  --plan $T/plan.json --image FprimeRustReference=$OUT/images/FprimeRustReference.bin \
+  --menu $T/faults-menu.json --bench $T/bench.json --tests $T -o manifest.json
+
+# dry run: no deployment, every command logged, every check "not evaluated: dry-run"
+fth run --run-dir $OUT/runs/dry --manifest manifest.json --plan $T/plan.json --bench $T/bench.json --tests $T --dry-run --unsealed
+
+# the whole plan on the native bench (fth launches fprime-gds + the deployment from bench.json, records, judges)
+fth run --run-dir $OUT/runs/clean --manifest manifest.json --plan $T/plan.json --bench $T/bench.json --tests $T --unsealed
+cat $OUT/runs/clean/runner/report.md
+
+# one test only (pytest selection after the fth options)
+fth run --run-dir $OUT/runs/l0-1 --manifest manifest.json --plan $T/plan.json --bench $T/bench.json --tests $T --unsealed -k test_L0_1
+
+# a planted fault, development style (its `fails` set must FAIL, everything else PASS)
+fth run --run-dir $OUT/runs/bump-zero --manifest manifest.json --plan $T/plan.json --bench $T/bench.json --tests $T --unsealed --plant L5-1=bump_zero
+```
+
+Before every launch make sure no other deployment/GDS actor is up (`ss -ltnp | grep 5000` empty) and kill the
+processes you started by their PID only. The stimulus must stay blind to the draw: no fixture exposes the
+sealed faults, and `fth verify-plan --tests` refuses a test that names them.
+
 ## License
 
 Apache 2.0 — same as F Prime and `fprime-rust`.
