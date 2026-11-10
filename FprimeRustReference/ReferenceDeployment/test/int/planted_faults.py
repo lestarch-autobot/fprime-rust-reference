@@ -68,7 +68,7 @@ def version_payloads_present(ctx, events):
         if not rows:  # a UUT event absent from a complete window is FAIL, not UNVERIFIED (A15 / review S-3)
             return False, f"no {name} event in {ctx.window.label}", []
         for e in rows:
-            v = (e.args or {}).get("version", "")
+            v = str((e.args or {}).get("version", ""))  # fth normalises an all-digit describe (e.g. [2890560]) to int
             seen.append(f"{name}=[{v}]")
             refs.append(f"events.jsonl:{e.idx}-{e.idx}")
             if not v or v.upper() == "UNKNOWN":

@@ -117,10 +117,10 @@ def _version_ctx(payloads):
     return _ctx(ev, [])
 
 
-def test_version_payloads_present_good():
-    r = HELPERS["version_payloads_present"](_version_ctx(list(zip(VERSION_EVENTS, ["v4.0.0", "1.0.0", "[fprime-rust 0.1]"]))),
-                                            events=VERSION_EVENTS)
-    assert r[0] is True and len(r[2]) == 3
+@pytest.mark.parametrize("payloads", [["v4.0.0", "1.0.0", "[fprime-rust 0.1]"], [2890560, "v4.4.0-82-gb188d185ec", "x"]])
+def test_version_payloads_present_good(payloads):
+    r = HELPERS["version_payloads_present"](_version_ctx(list(zip(VERSION_EVENTS, payloads))), events=VERSION_EVENTS)
+    assert r[0] is True and len(r[2]) == 3   # an all-digit describe string arrives as int (fth to_value): still a payload
 
 
 @pytest.mark.parametrize("bad", ["", "UNKNOWN", "unknown"])

@@ -34,6 +34,17 @@ def restamp(line: str) -> str:
     return f"TB_PROC_TIME: {sec}.{usec:06d}s, context={ctx},({tb}({ctx})-{sec}:{usec}),{m['rest']}\n"
 
 
+def _by_stamp(lines):
+    """Stable sort of one read batch by the row's own FSW stamp; rows without a stamp keep their place."""
+    keyed, last = [], (0, 0)
+    for ln in lines:
+        m = ROW.match(ln)
+        if m:
+            last = (int(m["sec"]), int(m["usec"]))
+        keyed.append((last, ln))
+    return [ln for _, ln in sorted(keyed, key=lambda kv: kv[0])]
+
+
 class Tail:
     def __init__(self, src: Path, dst: Path):
         self.src, self.dst, self.pos, self.buf = src, dst, 0, ""
@@ -51,7 +62,7 @@ class Tail:
         lines = self.buf.split("\n")
         self.buf = lines.pop()  # incomplete tail, if any
         with self.dst.open("a", encoding="utf-8") as out:
-            for ln in lines:
+            for ln in _by_stamp(lines):  # fprime-cli prints rows in arrival order; two threads can invert them by a few us
                 out.write(restamp(ln + "\n"))
 
 
