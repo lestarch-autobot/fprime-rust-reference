@@ -52,6 +52,8 @@ namespace FprimeRustReference {
 const U8 RustTester::MAX_CHUNKS_PER_WINDOW;
 const U32 RustTester::CHUNK_BYTES;
 const U8 RustTester::MAX_BURST;
+const U32 RustTester::BURST_INDEX_BITS;
+const U32 RustTester::BURST_GENERATION_MASK;
 
 // Snapshot storage, sized by the build and owned by this translation unit so the class layout does not depend on
 // FPRIME_RUST_REFERENCE_COVERAGE (the topology instantiates RustTester from a translation unit without it).
@@ -77,12 +79,13 @@ U32 RustTester::s_instances = 0;
 // The topology's component instances are namespace-scope statics (FprimeRustReferenceTopologyAc.cpp) destroyed
 // after main() returns, and atexit/static-destructor order is LIFO: a flush registered from init() would run
 // before those destructors, so their increments (the Rust Box drop in ~RustCounter/~RustMonitor, ~Relay) would
-// never reach the .gcda files. This guard is constructed before every default-priority static (init_priority
-// 101), so its libgcov registration and atexit flush are the earliest registrations and the flush runs last.
-struct RustTesterCoverageGuard {
-    RUST_TESTER_NO_PROFILE RustTesterCoverageGuard() { RustTester::registerObjects(); }
-};
-static RustTesterCoverageGuard s_coverageGuard __attribute__((init_priority(101)));
+// never reach the .gcda files. This startup constructor runs in the .init_array.00101 slot, before every
+// default-priority static, so the libgcov registration and the atexit flush are the earliest registrations and
+// the flush runs last. A free function (not an init_priority object) so the compiler emits no instrumented
+// static-initialization stub into this translation unit.
+RUST_TESTER_NO_PROFILE __attribute__((constructor(101))) static void registerCoverageAtStartup() {
+    RustTester::registerObjects();
+}
 #endif
 
 // libgcov keeps one process-wide list: register the section's objects exactly once per process, whatever the
@@ -111,6 +114,7 @@ RUST_TESTER_NO_PROFILE RustTester ::RustTester(const char* const compName)
       m_pathOut(nullptr),
       m_pathCapacity(0),
       m_pathFound(false),
+      m_burstGeneration(0),
       m_burstOk(0),
       m_burstError(0) {
     RustTester::s_instances++;
@@ -123,7 +127,8 @@ RUST_TESTER_NO_PROFILE RustTester ::~RustTester() {
 
 RUST_TESTER_NO_PROFILE void RustTester ::init(FwEnumStoreType instance) {
     RustTesterComponentBase::init(instance);
-    // idempotent: the init_priority guard already registered in the twin; this only covers an image without it
+    // a no-op in both images (twin: registerCoverageAtStartup already registered; OFF: weak nulls); kept so an
+    // image built without the startup constructor still registers, and to assert the single registration
     RustTester::registerObjects();
 }
 
@@ -214,7 +219,11 @@ RUST_TESTER_NO_PROFILE void RustTester ::DUMP_COVERAGE_cmdHandler(FwOpcodeType o
     this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::OK);
 }
 
-RUST_TESTER_NO_PROFILE void RustTester ::BURST_CMD_U32_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, U8 count, FwOpcodeType opcode, U32 arg) {
+RUST_TESTER_NO_PROFILE void RustTester ::BURST_CMD_U32_cmdHandler(FwOpcodeType opCode,
+                                                                 U32 cmdSeq,
+                                                                 U8 count,
+                                                                 FwOpcodeType burstOpcode,
+                                                                 U32 arg) {
     if (count == 0 || count > MAX_BURST) {
         this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::VALIDATION_ERROR);
         return;
@@ -228,27 +237,35 @@ RUST_TESTER_NO_PROFILE void RustTester ::BURST_CMD_U32_cmdHandler(FwOpcodeType o
     Fw::SerializeStatus status =
         packet.serializeFrom(static_cast<FwPacketDescriptorType>(Fw::ComPacketType::FW_PACKET_COMMAND));
     FW_ASSERT(status == Fw::FW_SERIALIZE_OK, static_cast<FwAssertArgType>(status));
-    status = packet.serializeFrom(opcode);
+    status = packet.serializeFrom(burstOpcode);
     FW_ASSERT(status == Fw::FW_SERIALIZE_OK, static_cast<FwAssertArgType>(status));
     status = packet.serializeFrom(arg);
     FW_ASSERT(status == Fw::FW_SERIALIZE_OK, static_cast<FwAssertArgType>(status));
 
+    // responses of an earlier burst that are still in flight carry the old generation and are not counted
+    this->m_burstGeneration++;
     this->m_burstOk = 0;
     this->m_burstError = 0;
     this->tlmWrite_BurstResponsesOk(this->m_burstOk);
     this->tlmWrite_BurstResponsesError(this->m_burstError);
-    for (U32 i = 0; i < count; i++) {
-        Fw::ComBuffer copy(packet);  // the dispatcher takes the buffer by reference; hand each call its own copy
-        this->cmdBurstOut_out(0, copy, i);
-    }
-    this->log_ACTIVITY_LO_BurstSent(count, opcode);
+    // respond first: this response goes onto cmdDisp's queue too (compCmdStat has no overflow hook), and it must
+    // not be the message that finds the queue full behind the burst
     this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::OK);
+    for (U32 i = 0; i < count; i++) {
+        // seqCmdBuff is async: the dispatcher serializes the buffer on enqueue, so one packet serves every call
+        this->cmdBurstOut_out(0, packet, RustTester::burstContext(this->m_burstGeneration, i));
+    }
+    this->log_ACTIVITY_LO_BurstSent(count, burstOpcode);
 }
 
 RUST_TESTER_NO_PROFILE void RustTester ::cmdBurstStatus_handler(FwIndexType portNum,
-                                         FwOpcodeType opCode,
-                                         U32 cmdSeq,
-                                         const Fw::CmdResponse& response) {
+                                                               FwOpcodeType opCode,
+                                                               U32 cmdSeq,
+                                                               const Fw::CmdResponse& response) {
+    // cmdSeq is the context given on cmdBurstOut (Svc::CommandDispatcher returns it unchanged)
+    if ((cmdSeq >> BURST_INDEX_BITS) != (this->m_burstGeneration & BURST_GENERATION_MASK)) {
+        return;
+    }
     if (response == Fw::CmdResponse::OK) {
         this->m_burstOk++;
         this->tlmWrite_BurstResponsesOk(this->m_burstOk);
@@ -256,6 +273,10 @@ RUST_TESTER_NO_PROFILE void RustTester ::cmdBurstStatus_handler(FwIndexType port
         this->m_burstError++;
         this->tlmWrite_BurstResponsesError(this->m_burstError);
     }
+}
+
+RUST_TESTER_NO_PROFILE U32 RustTester ::burstContext(U32 generation, U32 index) {
+    return ((generation & BURST_GENERATION_MASK) << BURST_INDEX_BITS) | (index & ((1u << BURST_INDEX_BITS) - 1));
 }
 
 // ----------------------------------------------------------------------

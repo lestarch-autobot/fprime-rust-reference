@@ -345,13 +345,17 @@ U32 RustTesterTester ::walkAll(U32& objects, U32& totalBytes, U32& crc, U32& crc
 // ----------------------------------------------------------------------
 
 void RustTesterTester ::burstCountBounds() {
+    REQUIREMENT("REQ-RustTester-014");
+    REQUIREMENT("REQ-RustTester-015");
+    COMMENT("UT-RT-10: BURST_CMD_U32 count 0 and 13 are rejected, 1 and 12 emit that many copies and one BurstSent");
+    this->clearHistory();
     const FwOpcodeType burstOpcode = 0x10017000;  // rustMonitor.SET_LIMIT in the reference deployment
     this->sendCmd_BURST_CMD_U32(0, 1, 0, burstOpcode, 7);
     ASSERT_CMD_RESPONSE_SIZE(1);
     ASSERT_CMD_RESPONSE(0, RustTester::OPCODE_BURST_CMD_U32, 1, Fw::CmdResponse::VALIDATION_ERROR);
     ASSERT_from_cmdBurstOut_SIZE(0);
 
-    this->sendCmd_BURST_CMD_U32(0, 2, 17, burstOpcode, 7);
+    this->sendCmd_BURST_CMD_U32(0, 2, RustTester::MAX_BURST + 1, burstOpcode, 7);
     ASSERT_CMD_RESPONSE_SIZE(2);
     ASSERT_CMD_RESPONSE(1, RustTester::OPCODE_BURST_CMD_U32, 2, Fw::CmdResponse::VALIDATION_ERROR);
     ASSERT_from_cmdBurstOut_SIZE(0);
@@ -362,19 +366,25 @@ void RustTesterTester ::burstCountBounds() {
     ASSERT_from_cmdBurstOut_SIZE(1);
     ASSERT_EVENTS_BurstSent_SIZE(1);
     ASSERT_EVENTS_BurstSent(0, 1, burstOpcode);
+    const U32 firstGeneration = this->fromPortHistory_cmdBurstOut->at(0).context >> RustTester::BURST_INDEX_BITS;
 
     this->clearHistory();
-    this->sendCmd_BURST_CMD_U32(0, 4, 16, burstOpcode, 7);
+    this->sendCmd_BURST_CMD_U32(0, 4, RustTester::MAX_BURST, burstOpcode, 7);
     ASSERT_CMD_RESPONSE(0, RustTester::OPCODE_BURST_CMD_U32, 4, Fw::CmdResponse::OK);
-    ASSERT_from_cmdBurstOut_SIZE(16);
+    ASSERT_from_cmdBurstOut_SIZE(RustTester::MAX_BURST);
     ASSERT_EVENTS_BurstSent_SIZE(1);
-    ASSERT_EVENTS_BurstSent(0, 16, burstOpcode);
-    for (U32 i = 0; i < 16; i++) {
-        ASSERT_EQ(this->fromPortHistory_cmdBurstOut->at(i).context, i);
+    ASSERT_EVENTS_BurstSent(0, RustTester::MAX_BURST, burstOpcode);
+    for (U32 i = 0; i < RustTester::MAX_BURST; i++) {
+        const U32 context = this->fromPortHistory_cmdBurstOut->at(i).context;
+        ASSERT_EQ(context & ((1u << RustTester::BURST_INDEX_BITS) - 1), i);
+        ASSERT_EQ(context >> RustTester::BURST_INDEX_BITS, firstGeneration + 1);
     }
 }
 
 void RustTesterTester ::burstPacketKnownAnswer() {
+    REQUIREMENT("REQ-RustTester-015");
+    COMMENT("UT-RT-11: the burst packet is the 10-byte known answer and Fw::CmdPacket parses it back");
+    this->clearHistory();
     const FwOpcodeType burstOpcode = 0x10017000;
     const U32 arg = 0x01020304;
     this->sendCmd_BURST_CMD_U32(0, 1, 2, burstOpcode, arg);
@@ -382,7 +392,8 @@ void RustTesterTester ::burstPacketKnownAnswer() {
 
     // raw bytes: FW_PACKET_COMMAND descriptor (FwPacketDescriptorType), opcode (FwOpcodeType), U32 arg, big endian
     const U8 expected[] = {0x00, 0x00, 0x10, 0x01, 0x70, 0x00, 0x01, 0x02, 0x03, 0x04};
-    static_assert(sizeof(FwPacketDescriptorType) == 2 && sizeof(FwOpcodeType) == 4, "KAT assumes U16 descriptor, U32 opcode");
+    static_assert(sizeof(FwPacketDescriptorType) == 2 && sizeof(FwOpcodeType) == 4,
+                  "KAT assumes a U16 descriptor and a U32 opcode");
     for (U32 copy = 0; copy < 2; copy++) {
         Fw::ComBuffer data = this->fromPortHistory_cmdBurstOut->at(copy).data;
         ASSERT_EQ(data.getSize(), sizeof(expected));
@@ -401,6 +412,9 @@ void RustTesterTester ::burstPacketKnownAnswer() {
 }
 
 void RustTesterTester ::burstResponseCounting() {
+    REQUIREMENT("REQ-RustTester-016");
+    COMMENT("UT-RT-12: responses are counted per outcome, stale-generation responses ignored, next burst starts over");
+    this->clearHistory();
     const FwOpcodeType burstOpcode = 0x10017000;
     this->sendCmd_BURST_CMD_U32(0, 1, 12, burstOpcode, 7);
     ASSERT_from_cmdBurstOut_SIZE(12);
@@ -410,22 +424,34 @@ void RustTesterTester ::burstResponseCounting() {
     ASSERT_TLM_BurstResponsesError_SIZE(1);
     ASSERT_TLM_BurstResponsesError(0, 0);
 
-    for (U32 i = 0; i < 10; i++) {
-        this->invoke_to_cmdBurstStatus(0, burstOpcode, i, Fw::CmdResponse(Fw::CmdResponse::OK));
+    // the dispatcher returns each copy's context as cmdSeq
+    U32 contexts[12];
+    for (U32 i = 0; i < 12; i++) {
+        contexts[i] = this->fromPortHistory_cmdBurstOut->at(i).context;
     }
-    this->invoke_to_cmdBurstStatus(0, burstOpcode, 10, Fw::CmdResponse(Fw::CmdResponse::BUSY));
-    this->invoke_to_cmdBurstStatus(0, burstOpcode, 11, Fw::CmdResponse(Fw::CmdResponse::EXECUTION_ERROR));
+    for (U32 i = 0; i < 10; i++) {
+        this->invoke_to_cmdBurstStatus(0, burstOpcode, contexts[i], Fw::CmdResponse(Fw::CmdResponse::OK));
+    }
+    this->invoke_to_cmdBurstStatus(0, burstOpcode, contexts[10], Fw::CmdResponse(Fw::CmdResponse::BUSY));
+    this->invoke_to_cmdBurstStatus(0, burstOpcode, contexts[11], Fw::CmdResponse(Fw::CmdResponse::EXECUTION_ERROR));
     ASSERT_TLM_BurstResponsesOk_SIZE(11);
     ASSERT_TLM_BurstResponsesOk(10, 10);
     ASSERT_TLM_BurstResponsesError_SIZE(3);
     ASSERT_TLM_BurstResponsesError(2, 2);
 
-    // a new burst starts both counts over
+    // a new burst starts both counts over; a late response of the previous burst is not counted
     this->clearHistory();
     this->sendCmd_BURST_CMD_U32(0, 2, 1, burstOpcode, 7);
     ASSERT_TLM_BurstResponsesOk(0, 0);
     ASSERT_TLM_BurstResponsesError(0, 0);
-    this->invoke_to_cmdBurstStatus(0, burstOpcode, 0, Fw::CmdResponse(Fw::CmdResponse::OK));
+    this->invoke_to_cmdBurstStatus(0, burstOpcode, contexts[0], Fw::CmdResponse(Fw::CmdResponse::OK));
+    this->invoke_to_cmdBurstStatus(0, burstOpcode, contexts[1], Fw::CmdResponse(Fw::CmdResponse::BUSY));
+    ASSERT_TLM_BurstResponsesOk_SIZE(1);
+    ASSERT_TLM_BurstResponsesError_SIZE(1);
+    const U32 context = this->fromPortHistory_cmdBurstOut->at(0).context;
+    this->invoke_to_cmdBurstStatus(0, burstOpcode, context, Fw::CmdResponse(Fw::CmdResponse::OK));
+    ASSERT_TLM_BurstResponsesOk_SIZE(2);
     ASSERT_TLM_BurstResponsesOk(1, 1);
 }
+
 }  // namespace FprimeRustReference

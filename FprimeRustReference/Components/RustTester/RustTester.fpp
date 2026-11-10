@@ -28,8 +28,8 @@ module FprimeRustReference {
     @ Standard event interface
     import Fw.Event
 
-    @ Telemetry port
-    telemetry port tlmOut
+    @ Standard telemetry interface
+    import Fw.Channel
 
     # ----------------------------------------------------------------------
     # General ports
@@ -61,9 +61,9 @@ module FprimeRustReference {
 
     @ Deterministic command burst (test deployment only): builds one Fw.ComBuffer command packet
     @ (FW_PACKET_COMMAND, opcode, U32 arg) and emits it count times on cmdBurstOut in the handler's thread,
-    @ so the dispatcher sees count back-to-back commands; count outside 1..16 is a validation error.
+    @ so the dispatcher sees count back-to-back commands; count outside 1..12 is a validation error.
     sync command BURST_CMD_U32(
-      count: U8 @< Copies to emit (1..16)
+      count: U8 @< Copies to emit (1..12)
       $opcode: FwOpcodeType @< Opcode of the burst command
       arg: U32 @< Its single U32 argument
     ) opcode 2

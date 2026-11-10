@@ -97,13 +97,13 @@
     packet RustReference id 38 group 2 {
       rustCounter.Counter
       rustCounter.ThresholdValid
-      rustTester.BurstResponsesOk
-      rustTester.BurstResponsesError
       rustCounter.TickCount
       rustMonitor.RunCount
       rustMonitor.LastCount
       rustMonitor.Exceedances
       rustMonitor.Limit
+      rustTester.BurstResponsesOk
+      rustTester.BurstResponsesError
       relay.Relayed
     }
 

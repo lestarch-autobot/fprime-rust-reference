@@ -126,8 +126,10 @@ first. Proof: two-process scenario (see the re-entry report). Supersedes the ear
 ### Anchor ruling D2'' (destructor coverage)
 Harness run: destructors (`~RustCounter`/`~RustMonitor` Box drop, `~Relay`) never counted — the atexit flush was
 registered from `init()`, after the static topology instances were constructed, so LIFO ran it before their
-destructors. APPLIED: `RustTesterCoverageGuard` with `init_priority(101)` in `RustTester.cpp` registers libgcov and
-the flush before any default-priority static (ON only); `init()` stays idempotent; REQ-RustTester-013 reworded.
+destructors. APPLIED: a startup constructor (`constructor(101)`, originally an `init_priority(101)` guard object —
+changed on the F´-code lens finding that the object's compiler-generated initializer carried counters) in
+`RustTester.cpp` registers libgcov and the flush before any default-priority static (ON only); `init()` stays
+idempotent; REQ-RustTester-013 reworded.
 Verified: the topology instances are namespace-scope statics in `FprimeRustReferenceTopologyAc.cpp`, `Main.cpp`
 returns from `main` after the SIGTERM handler; two-process proof shows `gcov -f` hits on the three destructors.
 
@@ -138,3 +140,22 @@ opcode, arg)` (opcode 2), `cmdBurstOut: Fw.Com -> CdhCore.cmdDisp.seqCmdBuff[1]`
 cmdBurstStatus`, `BurstSent` event (id 7), `BurstResponsesOk`/`BurstResponsesError` telemetry (ids 0/1);
 REQ-RustTester-014..017, UT-RT-10..12; residual flake (~1e-4 per burst) and the test-deployment-only nature of a
 ground-settable replayed opcode recorded in the SDD.
+
+Local lenses on the D2''+burst delta (children, nothing posted):
+- security No-Go -> fixed: the burst's OK response went onto cmdDisp's hook-less `compCmdStat` behind 16 copies
+  (assert risk) -> respond before the loop, `MAX_BURST` 12; SDD "nothing is interpreted" was wrong -> hazard
+  paragraph (async commands without hook assert when a burst exceeds their queue) and plan rule; generation in
+  the port context so late responses of an earlier burst are not counted; `burstOpcode` naming.
+- F´ code Go after 1-4 -> fixed: `init_priority` object replaced by a `constructor(101)` free function (the
+  object's `_GLOBAL__sub_I` stub was instrumented inside the judged filter); friend comment paste; SDD ports /
+  commands / event 7 / telemetry table; UT-RT-10..12 REQUIREMENT/COMMENT banners; `import Fw.Channel`; one
+  packet per burst (async port serializes on enqueue); 120-col; REQ-013 what-only; Packets grouping;
+  declined: removing `registerObjects()` from `init()` (anchor asked for an idempotent `init`; documented as a
+  no-op).
+- correctness No-Go (SDD text only) -> fixed: the "copies 11 and 12 -> BUSY, flake 1e-4" model ignored
+  `rustMonitor.countIn` sharing the 10-deep queue (a `BUMP`/`RESET` in the preceding second makes copy 10 `BUSY`
+  too; measured 2/2/2 vs 3/3/3/2/3) -> precondition + plan oracle `LimitSet + BUSY == count`, `BUSY >= count-10`,
+  `CommandDroppedQueueOverflow == 0`, `Ok + Error == count`; late-response counting -> generation in the context
+  (also security #4 / F´ #12). Verified by the lens: guard ordering (dtor counted 1/1 with the guard, 0/1
+  without), libgcov registers no `gcov_exit` of its own under `-fprofile-info-section`, 144/144 burst copies
+  accounted for live (110 `LimitSet` + 34 `BUSY`, 0 drops).

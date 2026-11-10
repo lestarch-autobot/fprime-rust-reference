@@ -157,11 +157,13 @@ fth coverage-system --record <events.jsonl dir> --gcno-root "$PWD/../../build-fp
 ```
 
 `BURST_CMD_U32(count, opcode, arg)` (test deployment only) replays one `FW_PACKET_COMMAND` packet `count` times
-(1..16) into `CdhCore.cmdDisp.seqCmdBuff[1]` from inside the deployment, so the plan can fill `RustMonitor`'s
+(1..12) into `CdhCore.cmdDisp.seqCmdBuff[1]` from inside the deployment, so the plan can fill `RustMonitor`'s
 10-deep `SET_LIMIT` queue within one tick and prove the overflow hook (`OpCodeError(..., BUSY)` from the
 dispatcher); `BurstSent` reports the burst, `BurstResponsesOk`/`BurstResponsesError` count the dispatcher's
-responses (`seqCmdStatus[1]`). Exit-time flush: a file-scope `init_priority(101)` guard registers libgcov and the
-atexit flush before the topology statics, so destructor increments are counted.
+responses (`seqCmdStatus[1]`); burst only hook-protected async commands such as `SET_LIMIT` — an async command
+without an overflow hook asserts when a burst exceeds its queue. Exit-time flush: a startup constructor
+(`constructor(101)`) registers libgcov and the atexit flush before the topology statics, so destructor
+increments are counted.
 
 Both caches install into the same `build-artifacts/` directory, so copy the twin's `bin/` and dictionary aside
 before building the other image. The filter-to-scope mapping and the `.gcno` locations are in

@@ -22,7 +22,14 @@ class RustTester final : public RustTesterComponentBase {
     //! Largest window: 8 chunks + CoverageObject + CoverageDumpDone fit the 20-deep CdhCore.cmdDisp queue
     static const U8 MAX_CHUNKS_PER_WINDOW = 8;   //!< events per window stay far below CdhCoreConfig.QueueSizes.events
     static const U32 CHUNK_BYTES = 32;           //!< CoverageChunk payload (8 x U32)
-    static const U8 MAX_BURST = 16;  //!< BURST_CMD_U32 upper bound (below cmdDisp's 20-deep queue)
+    //! BURST_CMD_U32 upper bound: the copies plus the burst's own OK response share CdhCore.cmdDisp's 20-deep queue
+    //! (12 + 1 leaves 7 slots for ground traffic and the sequence tracker's 25 entries hold 12 + 10 pending)
+    static const U8 MAX_BURST = 12;
+    static const U32 BURST_INDEX_BITS = 8;                  //!< low context bits: copy index
+    static const U32 BURST_GENERATION_MASK = 0x00FFFFFFu;   //!< high context bits: burst generation
+    //! Register the section's objects with libgcov once per process and install the exit flush (idempotent; no-op
+    //! without instrumentation). Called by the startup constructor in RustTester.cpp (twin) and again by init()
+    static void registerObjects();
     //! Capacity of the snapshot storage (gcda bytes of all instrumented objects); sized in RustTester.cpp by the
     //! build (twin: 512 KiB, OFF image: 1 KiB), never in this header so every translation unit sees one layout
     static U32 snapshotCapacity();
@@ -41,8 +48,8 @@ class RustTester final : public RustTesterComponentBase {
     ~RustTester();
 
     //! Initialize the component. In the coverage twin the libgcov registration and the exit-time flush are done by
-    //! a file-scope guard constructed before every default-priority static (so the flush runs after the static
-    //! destructors); init() repeats the idempotent registration for completeness. Hides the non-virtual autocoded
+    //! a startup constructor that runs before every default-priority static (so the flush runs after the static
+    //! destructors); init() repeats the idempotent registration. Hides the non-virtual autocoded
     //! init: call it on the derived type (the topology and the unit tests do)
     void init(FwEnumStoreType instance = 0);
 
@@ -60,8 +67,8 @@ class RustTester final : public RustTesterComponentBase {
     };
 
   private:
+    //! white-box unit tests inject a snapshot (UT-RT-7/8) and read object paths (UT-RT-9)
     friend class RustTesterTester;
-    friend struct RustTesterCoverageGuard;  //!< init_priority(101) registration guard in RustTester.cpp (twin)  //!< white-box unit tests inject a snapshot (UT-RT-7/8) and read object paths (UT-RT-9)
 
     // ----------------------------------------------------------------------
     // Handler implementations for commands
@@ -90,7 +97,7 @@ class RustTester final : public RustTesterComponentBase {
     void BURST_CMD_U32_cmdHandler(FwOpcodeType opCode,  //!< The opcode
                                   U32 cmdSeq,           //!< The command sequence number
                                   U8 count,             //!< Copies to emit (1..16)
-                                  FwOpcodeType opcode,  //!< Opcode of the burst command
+                                  FwOpcodeType burstOpcode,  //!< Opcode of the burst command
                                   U32 arg               //!< Its single U32 argument
                                   ) override;
 
@@ -100,6 +107,9 @@ class RustTester final : public RustTesterComponentBase {
                                 U32 cmdSeq,                       //!< Command sequence number
                                 const Fw::CmdResponse& response   //!< Dispatcher response
                                 ) override;
+
+    //! Port context of one burst copy: generation in the high bits, copy index in the low bits
+    static U32 burstContext(U32 generation, U32 index);
 
     // ----------------------------------------------------------------------
     // Coverage dump path (never instrumented, see RustTester.cpp)
@@ -119,9 +129,6 @@ class RustTester final : public RustTesterComponentBase {
         FILE_PATH     //!< copy the path into m_pathOut (unit tests)
     };
 
-    //! Register the section's objects with libgcov once per process and install the exit flush (idempotent; no-op
-    //! without instrumentation). Called by the init_priority(101) guard in the twin and again by init()
-    static void registerObjects();
 
     //! Flush the in-memory counters into the on-disk .gcda files and zero them (libgcov dump + reset)
     static void flushCounters();
@@ -155,7 +162,7 @@ class RustTester final : public RustTesterComponentBase {
     U32 m_snapshotCrc;                      //!< CRC-32 over m_snapshot[0 .. m_snapshotBytes)
     bool m_snapshotValid;                   //!< a window at chunk 0 has been taken since the last reset
     bool m_snapshotOverflow;                //!< the walk did not fit (set by filenameCallback / forEachObjectFile)
-    U8* const m_arena;                      //!< allocateCallback scratch (8-byte aligned file-scope storage), reset per object
+    U8* const m_arena;                      //!< allocateCallback scratch (8-byte aligned file-scope storage)
     U32 m_arenaUsed;                        //!< bytes handed out of m_arena for the current object
     FileMode m_fileMode;                    //!< what filenameCallback does for the object being walked
     bool m_fileError;                       //!< a .gcda file could not be read (set by filenameCallback)
@@ -164,6 +171,7 @@ class RustTester final : public RustTesterComponentBase {
     char* m_pathOut;                        //!< FILE_PATH: destination buffer
     FwSizeType m_pathCapacity;              //!< FILE_PATH: destination capacity
     bool m_pathFound;                       //!< FILE_PATH: the path was copied
+    U32 m_burstGeneration;                  //!< incremented per BURST_CMD_U32; high bits of the port context
     U32 m_burstOk;                          //!< burst responses == OK since the last BURST_CMD_U32
     U32 m_burstError;                       //!< burst responses != OK since the last BURST_CMD_U32
     static bool s_registered;               //!< objects registered with libgcov for __gcov_reset (process-wide)

@@ -22,19 +22,21 @@ recognises and pages the gcov counters of the instrumented twin image (§3a) bac
 | REQ-RustTester-010 | `DUMP_COVERAGE(start, 0)` shall delete every instrumented object's on-disk `.gcda` file, zero the arc counters, invalidate the snapshot and emit `CoverageReset(objects)` with `OK`; a file that cannot be deleted shall answer `CoverageRejected(FILE_ERROR)` + `EXECUTION_ERROR`. | Unit Test |
 | REQ-RustTester-011 | Every function of the hand-written `RustTester.cpp` shall carry `no_profile_instrument_function`, so the harness logic itself contributes no counters. | Inspection |
 | REQ-RustTester-012 | In the coverage twin, `MARK` shall flush the counters into the on-disk `.gcda` files (libgcov dump) and zero them (reset) after emitting `Marker`, so coverage accumulated before a marker survives the process. | Unit Test; Integration Test |
-| REQ-RustTester-013 | In the coverage twin, every object of the gcov information section shall be registered with libgcov once per process, and a flush shall be arranged at normal process exit that runs after the static destructors of the topology instances, so destructor increments reach the `.gcda` files; the registration shall happen before any default-priority static is constructed (`init_priority(101)` guard) and `init` shall be idempotent. | Inspection; Integration Test |
-| REQ-RustTester-014 | `BURST_CMD_U32(count, opcode, arg)` shall respond `VALIDATION_ERROR` and emit nothing when `count` is 0 or greater than 16. | Unit Test |
-| REQ-RustTester-015 | For `count` in 1..16, `BURST_CMD_U32` shall emit on `cmdBurstOut`, back to back in the handler's thread, `count` copies of one command packet laid out as `Fw::CmdPacket::deserializeFrom` expects — `FW_PACKET_COMMAND` descriptor, `opcode`, the `U32 arg` — with the copy index as the port context, then emit `BurstSent(count, opcode)` and respond `OK`. | Unit Test; Integration Test |
-| REQ-RustTester-016 | Each response arriving on `cmdBurstStatus` shall be counted into `BurstResponsesOk` (response `OK`) or `BurstResponsesError` (any other response); both channels shall be zeroed and written at the start of every burst. | Unit Test; Integration Test |
+| REQ-RustTester-013 | In the coverage twin, every object of the gcov information section shall be registered with libgcov once per process, and the counters shall be flushed at normal process exit after the destructors of the topology's static component instances have run, so destructor increments reach the `.gcda` files. | Inspection; Integration Test |
+| REQ-RustTester-014 | `BURST_CMD_U32(count, opcode, arg)` shall respond `VALIDATION_ERROR` and emit nothing when `count` is 0 or greater than 12. | Unit Test |
+| REQ-RustTester-015 | For `count` in 1..12, `BURST_CMD_U32` shall respond `OK` and then emit on `cmdBurstOut`, back to back in the handler's thread, `count` copies of one command packet laid out as `Fw::CmdPacket::deserializeFrom` expects — `FW_PACKET_COMMAND` descriptor, `opcode`, the `U32 arg` — each with a port context carrying the burst generation and the copy index, followed by `BurstSent(count, opcode)`. | Unit Test; Integration Test |
+| REQ-RustTester-016 | Each response arriving on `cmdBurstStatus` whose context belongs to the current burst shall be counted into `BurstResponsesOk` (response `OK`) or `BurstResponsesError` (any other response); responses of an earlier burst shall be ignored; both channels shall be zeroed and written at the start of every burst. | Unit Test; Integration Test |
 | REQ-RustTester-017 | `BURST_CMD_U32` shall respond `EXECUTION_ERROR` when `cmdBurstOut` is not connected. | Inspection |
 
-No general ports: the component has only the command, event and time special ports.
+General ports: `cmdBurstOut: Fw.Com` (output, the burst packets) and `cmdBurstStatus: Fw.CmdResponse` (sync input, the
+dispatcher's response to each burst command); otherwise the command, event, telemetry and time special ports.
 
 ## Design
 
-Passive component; `Fw.Command`, `Fw.Event` interfaces and `timeCaller`. Commands: `MARK(id: U32)` opcode 0,
-`DUMP_COVERAGE(start: U16, count: U8)` opcode 1. Events (all `activity low` except `CoverageUnavailable` and `CoverageRejected`,
-`warning low`), text formats are the `fth/system_coverage.py` `_TEXT` contract verbatim:
+Passive component; `Fw.Command`, `Fw.Event`, `Fw.Channel` interfaces and `timeCaller`. Commands: `MARK(id: U32)` opcode 0,
+`DUMP_COVERAGE(start: U16, count: U8)` opcode 1, `BURST_CMD_U32(count: U8, opcode: FwOpcodeType, arg: U32)` opcode 2.
+Events (all `activity low` except `CoverageUnavailable` and `CoverageRejected`, `warning low`); the coverage text formats
+are the `fth/system_coverage.py` `_TEXT` contract verbatim:
 
 | Id | Event | Format |
 |---|---|---|
@@ -45,19 +47,31 @@ Passive component; `Fw.Command`, `Fw.Event` interfaces and `timeCaller`. Command
 | 4 | `CoverageUnavailable` | `coverage not compiled into this image` |
 | 5 | `CoverageReset(objects: U32)` | `coverage counters zeroed: {} objects` |
 | 6 | `CoverageRejected(reason: DumpReject {NO_SNAPSHOT, OVERFLOW, FILE_ERROR})` (warning low) | `coverage dump rejected: {}` |
+| 7 | `BurstSent(count: U8, opcode: FwOpcodeType)` | `burst sent: {} x opcode {x}` |
+
+Telemetry:
+
+| Id | Channel | Type | Meaning |
+|---|---|---|---|
+| 0 | `BurstResponsesOk` | `U32` | burst responses equal to `OK` since the last `BURST_CMD_U32` |
+| 1 | `BurstResponsesError` | `U32` | burst responses other than `OK` (e.g. `BUSY` from an overflow hook) since the last `BURST_CMD_U32` |
 
 (`id` is an FPP keyword; the model spells the argument `$id`, the dictionary and the C++ see `id`.)
 
 ### Command burst (`BURST_CMD_U32`)
 
-Test-deployment-only capability: a ground-settable opcode replayed `count` times from inside the deployment. It
+Test-deployment-only capability: a ground-chosen opcode replayed `count` times from inside the deployment. It
 exists because the harness sends one `fprime-cli` process per command (>= 0.5 s each), which can never fill
 `RustMonitor`'s 10-deep queue within one 1 Hz tick; the burst proves the `SET_LIMIT` overflow hook
-(REQ-FprimeRust-032, `RustMonitor` hook -> `BUSY`) deterministically.
+(REQ-FprimeRust-032, `RustMonitor` hook -> `BUSY`) in one dispatcher pass.
 
 - Packet: `Fw::ComBuffer` = `FwPacketDescriptorType(FW_PACKET_COMMAND)` + `FwOpcodeType opcode` + `U32 arg`, i.e.
   exactly what `Svc::CommandDispatcher::seqCmdBuff_handler` parses with `Fw::CmdPacket::deserializeFrom`; built
-  once, a copy handed to each `cmdBurstOut_out(0, copy, i)` call (the port takes the buffer by reference).
+  once and handed to every `cmdBurstOut_out(0, packet, context)` call (`seqCmdBuff` is async, the dispatcher
+  serializes the buffer on enqueue).
+- Context: `(generation & 0x00FFFFFF) << 8 | copyIndex`; the dispatcher returns it unchanged as `cmdSeq` on
+  `seqCmdStatus`, so the status handler ignores responses of an earlier burst (`SET_LIMIT` completions arrive at
+  the next tick, i.e. up to 1 s after the burst).
 - Wiring (reference topology, `connections RustTester`): `rustTester.cmdBurstOut -> CdhCore.cmdDisp.seqCmdBuff[1]`
   and `CdhCore.cmdDisp.seqCmdStatus[1] -> rustTester.cmdBurstStatus`; index 0 is the uplink router
   (`ComCcsds.Subtopology.commandOut`). The dispatcher therefore tracks every burst command like a sequencer's:
@@ -65,19 +79,37 @@ exists because the harness sends one `fprime-cli` process per command (>= 0.5 s 
   answers `BUSY`; the plan judges those dispatcher events. The CdhCore subtopology only aliases the whole port
   arrays (`port seqCmdBuff = cmdDisp.seqCmdBuff`), so the reference topology connects to the instance's indexed
   ports directly.
-- Threading: `BURST_CMD_U32` is a sync command, so the loop runs in `cmdDisp`'s thread and each copy is queued on
-  `cmdDisp`'s own `seqCmdBuff` (async, queue 20): `count <= 16` keeps the burst plus a few ground commands under that
-  depth. `cmdBurstStatus` is called back from the same thread, so the two counters need no lock. The dispatcher
-  dispatches the 12 copies in ~100 us; `RustMonitor`'s `SET_LIMIT` is async with a 10-deep queue, so copies 11 and
-  12 take the overflow hook -> `BUSY` unless a rate-group drain lands inside that span.
-- Residual flake: a 1 Hz drain landing inside the ~100 us dispatch span (~1e-4 per burst) would change the
-  `BUSY` count (more `LimitSet`, fewer `OpCodeError`). Recorded here as the plan's residual flake probability.
+- Queue accounting: `BURST_CMD_U32` is a sync command, so the loop runs in `cmdDisp`'s thread and every copy is
+  queued on `cmdDisp`'s own 20-deep queue (`CdhCoreConfig.QueueSizes.cmdDisp`), which `seqCmdBuff` (hook: drops
+  with `CommandDroppedQueueOverflow`) shares with `compCmdStat` (no hook: asserts on overflow). The burst's own
+  `OK` response is sent *before* the loop so the response is never the message that finds the queue full behind
+  the copies; `MAX_BURST = 12` leaves 7 slots for concurrent ground traffic and keeps 12 + 10 tick-pending
+  entries under the dispatcher's 25-entry sequence tracker. `cmdBurstStatus` is called back from the same thread,
+  so the counters need no lock. The dispatcher dispatches the 12 copies in ~100 us; `RustMonitor`'s `SET_LIMIT`
+  is async with a 10-deep queue, so with an empty queue copies 11 and 12 take the overflow hook -> `BUSY`.
+- What the `BUSY` count depends on (plan oracle): `RustMonitor`'s queue is shared with its `countIn` port (async,
+  `drop`), which `RustCounter` feeds only when its counter changes (`RESET`/`BUMP`), and a queued component drains
+  only in its 1 Hz `run` entry — so a `RustCounter` command in the second before the burst leaves one `Count` in
+  the queue and copy 10 is `BUSY` as well (measured on the built deployment: eight bursts of 12 -> `BUSY` = 2 each;
+  five bursts each preceded by `BUMP` -> 3 3 3 2 3). The plan therefore judges `LimitSet + OpCodeError(BUSY) ==
+  count` and `OpCodeError(BUSY) >= count - 10`, with `CommandDroppedQueueOverflow == 0` and `BurstResponsesOk +
+  BurstResponsesError == count` (a copy dropped by `cmdDisp`'s own hook produces no status), and states the
+  precondition "no `RustCounter` command in the preceding second" for an exact `== 2`. A 1 Hz drain landing inside
+  the ~100 us dispatch span (~1e-4 per burst) moves one copy from `BUSY` to `LimitSet` within the same oracle.
+  Bursts should be spaced >= 1 s apart (the 10 queued `SET_LIMIT`s complete at the next tick); the generation in
+  the context keeps a late response of an earlier burst out of the current counts regardless.
 - Event budget per `BURST_CMD_U32 12 SET_LIMIT`: `BurstSent` + 12 `OpCodeDispatched` + 2 `OpCodeError`
   immediately, then 10 `LimitSet` + 10 `OpCodeCompleted` at the next tick; no per-response event (the two outcome
   counts are telemetry), so a 40-deep `CdhCore.events` queue holds each burst.
-- Security: the opcode and argument come from the ground and are replayed verbatim; this is acceptable only in a
-  test deployment, which is the only place `RustTester` is instantiated. Count is bounded (1..16), the packet is
-  10 bytes in a stack `Fw::ComBuffer`, nothing is interpreted.
+- Hazard (why this is test-deployment-only): the opcode and argument come from the ground and are replayed
+  verbatim. The burst itself is bounded (1..12, a 10-byte packet in a stack `Fw::ComBuffer`), but the *target*
+  decides what a burst does: an `async command` whose component declares no overflow hook (`drop`/`hook`) is
+  queued raw and its component **asserts** (FATAL) when the burst exceeds its queue depth — in this topology
+  `rustCounter.RESET`/`BUMP` (queue 10) and the `DataProducts` async commands. A burst of a 3-argument command
+  ends as the dispatcher's `FORMAT_ERROR`, bursting `BURST_CMD_U32` itself is a sync command executed 12 times
+  (no recursion past the dispatcher queue). Plan rule: burst only opcodes whose component declares a `hook`
+  overflow policy for that command (`rustMonitor.SET_LIMIT`), or keep `count` under the target's queue depth.
+  `RustTester` is instantiated only in the reference test deployment.
 
 ### Coverage image (twin)
 
@@ -97,12 +129,14 @@ Native persistence = libgcov's hosted on-disk dump/merge (the MCU analogue is co
 `dev-campaign` runs the plan on the twin and the dump plan as two separate processes, and with
 `-fprofile-info-section` nothing is registered or written by itself, so the twin does it explicitly:
 
-- A file-scope guard in `RustTester.cpp`, constructed with `init_priority(101)` before every default-priority
-  static, registers the section's objects with libgcov once per process (`__gcov_init`) and installs an `atexit`
-  flush. Because atexit handlers and static destructors run in reverse registration order, the earliest
-  registration runs last: a clean exit (SIGINT/SIGTERM handled by `Main.cpp`, `main` returns, the topology's
-  namespace-scope instances are destroyed) flushes the tail after the last marker including the destructor
-  increments (`~RustCounter`/`~RustMonitor` Rust Box drop, `~Relay`). `init()` repeats the idempotent registration.
+- A startup constructor in `RustTester.cpp` (`__attribute__((constructor(101)))`, `.init_array.00101`, i.e. before
+  every default-priority static; a free function rather than an `init_priority` object so the compiler emits no
+  instrumented static-initialization stub into the hand-written translation unit) registers the section's objects
+  with libgcov once per process (`__gcov_init`) and installs an `atexit` flush. Because atexit handlers and static
+  destructors run in reverse registration order, the earliest registration runs last: a clean exit (SIGINT/SIGTERM
+  handled by `Main.cpp`, `main` returns, the topology's namespace-scope instances are destroyed) flushes the tail
+  after the last marker including the destructor increments (`~RustCounter`/`~RustMonitor` Rust Box drop,
+  `~Relay`). `init()` repeats the idempotent registration (a no-op in both images).
 - `MARK` emits `Marker(id)` and then calls `__gcov_dump(); __gcov_reset();` — the in-memory counters are merged
   into each object's `.gcda` at the path the compiler recorded (`gcov_info->filename`, under the twin's build
   cache) and restart at zero, so the files are cumulative without double counting (increments between the dump
@@ -127,7 +161,8 @@ ground-paced windows, so live counters would make the per-window chunks and the 
 coverage-system` refuses such a record). The allocate callback hands out 8-byte aligned blocks of a 16 KiB
 arena (libgcov asks only for top-n counter scratch, unused by `-fprofile-arcs`); no dynamic allocation anywhere.
 GCC >= 12 omits all-zero counter records, so a stream dumped after a zero is shorter than the stream before it.
-Limits of the hosted scheme (documented, not guarded): a libgcov dump that fails (unwritable file) is reported
+Limits of the hosted scheme (documented, not guarded): inline `Fw` template members instantiated in
+`RustTester.cpp.o` carry counters attributed to the `Fw` headers (outside every judged filter); a libgcov dump that fails (unwritable file) is reported
 by libgcov on stderr only and the following reset still zeroes the in-memory counters; `GCOV_PREFIX` /
 `GCOV_PREFIX_STRIP` relocate libgcov's writes while the component reads and deletes the compiler-recorded path,
 so they are unsupported for the twin; a path at or beyond `FileNameStringSize` answers `FILE_ERROR` instead of
@@ -185,9 +220,9 @@ filters → lines 28.6 % (16/56), branches 8.8 %; three filters → lines 53.2 %
 | UT-RT-7 | `crc32` known answer: `0xcbf43926` over `"123456789"`, continuation equals one pass | REQ-RustTester-003, -004 |
 | UT-RT-8 | white-box (every build): an injected 40-byte + 32-byte snapshot pages as chunks with MSB-first words and zero padding, `CoverageObject` with each last chunk (also when the object is a multiple of 32), `Done` only once the window reaches the end | REQ-RustTester-002, -003, -004 |
 | UT-RT-9 | instrumented build: after `count = 0` the first object's `.gcda` is absent; one `MARK` writes it (size > 0), a second `MARK` keeps it (size >= before, cumulative merge); `count = 0` deletes it again | REQ-RustTester-012, -010 |
-| UT-RT-10 | `BURST_CMD_U32` count 0 and 17 -> `VALIDATION_ERROR`, nothing emitted; 1 and 16 -> `OK`, that many copies on `cmdBurstOut` with contexts 0..count-1, one `BurstSent(count, opcode)` | REQ-RustTester-014, -015 |
+| UT-RT-10 | `BURST_CMD_U32` count 0 and 13 -> `VALIDATION_ERROR`, nothing emitted; 1 and 12 -> `OK`, that many copies on `cmdBurstOut` with copy indices 0..count-1 and one generation per burst, one `BurstSent(count, opcode)` | REQ-RustTester-014, -015 |
 | UT-RT-11 | the emitted packet equals the 10-byte known answer `00 00 | opcode | arg` (big endian) and `Fw::CmdPacket::deserializeFrom` accepts it with the same opcode and argument, nothing left over | REQ-RustTester-015 |
-| UT-RT-12 | a burst zeroes both channels; 10 `OK` + `BUSY` + `EXECUTION_ERROR` on `cmdBurstStatus` -> `BurstResponsesOk` 10, `BurstResponsesError` 2; the next burst starts over | REQ-RustTester-016 |
+| UT-RT-12 | a burst zeroes both channels; 10 `OK` + `BUSY` + `EXECUTION_ERROR` on `cmdBurstStatus` with the emitted contexts -> `BurstResponsesOk` 10, `BurstResponsesError` 2; the next burst starts over and ignores responses carrying the previous generation | REQ-RustTester-016 |
 
 In the instrumented UT cache the test executable (autocode + tester) is instrumented too, so UT-RT-4..6 have counters
 that move with `MARK` and reset. The instrumented unit-test build is a second UT cache: `fprime-util generate --ut -DFPRIME_RUST_REFERENCE_COVERAGE=ON
