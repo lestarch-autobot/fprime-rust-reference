@@ -238,7 +238,8 @@ def test_L7_1(window, send, bench, check, require, fth_plan):
     with window(110, 111):
         require(STD)
         require("commands_sent == 7")                    # sender log: every stimulus command and both markers
-        check("event cmdDisp.OpCodeDispatched count == 6")  # the UUT dispatched each of them but the START marker,
+        check("event cmdDisp.OpCodeDispatched count == 6")
+        check("last(rustMonitor.LastCount) == 0")           # stimulus-declared: a no-sample window must FAIL (A13)  # the UUT dispatched each of them but the START marker,
                                                           # whose dispatch row precedes its marker event (A5)
         bracket(bench)
         send(THRESHOLD_SET, [42])

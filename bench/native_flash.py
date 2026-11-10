@@ -21,8 +21,11 @@ def main(argv=None) -> int:
         print(f"[ERROR] image not found: {args.image}", file=sys.stderr)
         return 1
     args.install.parent.mkdir(parents=True, exist_ok=True)
-    if args.install.exists():
-        args.install.unlink()
+    for stale in args.install.parent.iterdir():  # fresh working directory: PrmDb.dat and the previous executable go
+        if stale.is_file() or stale.is_symlink():
+            stale.unlink()
+        else:
+            shutil.rmtree(stale)
     shutil.copyfile(args.image, args.install)
     args.install.chmod(args.install.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
     print(f"Serial# = native-{socket.gethostname()}")
