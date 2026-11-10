@@ -130,3 +130,11 @@ destructors. APPLIED: `RustTesterCoverageGuard` with `init_priority(101)` in `Ru
 the flush before any default-priority static (ON only); `init()` stays idempotent; REQ-RustTester-013 reworded.
 Verified: the topology instances are namespace-scope statics in `FprimeRustReferenceTopologyAc.cpp`, `Main.cpp`
 returns from `main` after the SIGTERM handler; two-process proof shows `gcov -f` hits on the three destructors.
+
+### Anchor ruling (same cycle): deterministic command burst
+The harness child ruled a deployment-side burst is the only replay-faithful way to prove the SET_LIMIT overflow
+hook (fth's sealed `send` row = one fprime-cli process per command). APPLIED: `RustTester.BURST_CMD_U32(count,
+opcode, arg)` (opcode 2), `cmdBurstOut: Fw.Com -> CdhCore.cmdDisp.seqCmdBuff[1]`, `seqCmdStatus[1] ->
+cmdBurstStatus`, `BurstSent` event (id 7), `BurstResponsesOk`/`BurstResponsesError` telemetry (ids 0/1);
+REQ-RustTester-014..017, UT-RT-10..12; residual flake (~1e-4 per burst) and the test-deployment-only nature of a
+ground-settable replayed opcode recorded in the SDD.

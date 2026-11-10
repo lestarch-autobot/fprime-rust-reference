@@ -6,6 +6,8 @@
 
 #include "FprimeRustReference/Components/RustTester/RustTester.hpp"
 
+#include <Fw/Com/ComPacket.hpp>
+
 #include <cstdlib>
 #include <cstring>
 
@@ -49,6 +51,7 @@ namespace FprimeRustReference {
 // out-of-class definitions: the constants are odr-used (passed by reference in the unit tests)
 const U8 RustTester::MAX_CHUNKS_PER_WINDOW;
 const U32 RustTester::CHUNK_BYTES;
+const U8 RustTester::MAX_BURST;
 
 // Snapshot storage, sized by the build and owned by this translation unit so the class layout does not depend on
 // FPRIME_RUST_REFERENCE_COVERAGE (the topology instantiates RustTester from a translation unit without it).
@@ -107,7 +110,9 @@ RUST_TESTER_NO_PROFILE RustTester ::RustTester(const char* const compName)
       m_walkIndex(0),
       m_pathOut(nullptr),
       m_pathCapacity(0),
-      m_pathFound(false) {
+      m_pathFound(false),
+      m_burstOk(0),
+      m_burstError(0) {
     RustTester::s_instances++;
     FW_ASSERT(RustTester::s_instances == 1, static_cast<FwAssertArgType>(RustTester::s_instances));
 }
@@ -207,6 +212,50 @@ RUST_TESTER_NO_PROFILE void RustTester ::DUMP_COVERAGE_cmdHandler(FwOpcodeType o
     }
     this->emitWindow(static_cast<U32>(start), static_cast<U32>(count));
     this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::OK);
+}
+
+RUST_TESTER_NO_PROFILE void RustTester ::BURST_CMD_U32_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, U8 count, FwOpcodeType opcode, U32 arg) {
+    if (count == 0 || count > MAX_BURST) {
+        this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::VALIDATION_ERROR);
+        return;
+    }
+    if (!this->isConnected_cmdBurstOut_OutputPort(0)) {
+        this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::EXECUTION_ERROR);
+        return;
+    }
+    // the packet the dispatcher expects (Fw::CmdPacket::deserializeFrom): descriptor, opcode, serialized arguments
+    Fw::ComBuffer packet;
+    Fw::SerializeStatus status =
+        packet.serializeFrom(static_cast<FwPacketDescriptorType>(Fw::ComPacketType::FW_PACKET_COMMAND));
+    FW_ASSERT(status == Fw::FW_SERIALIZE_OK, static_cast<FwAssertArgType>(status));
+    status = packet.serializeFrom(opcode);
+    FW_ASSERT(status == Fw::FW_SERIALIZE_OK, static_cast<FwAssertArgType>(status));
+    status = packet.serializeFrom(arg);
+    FW_ASSERT(status == Fw::FW_SERIALIZE_OK, static_cast<FwAssertArgType>(status));
+
+    this->m_burstOk = 0;
+    this->m_burstError = 0;
+    this->tlmWrite_BurstResponsesOk(this->m_burstOk);
+    this->tlmWrite_BurstResponsesError(this->m_burstError);
+    for (U32 i = 0; i < count; i++) {
+        Fw::ComBuffer copy(packet);  // the dispatcher takes the buffer by reference; hand each call its own copy
+        this->cmdBurstOut_out(0, copy, i);
+    }
+    this->log_ACTIVITY_LO_BurstSent(count, opcode);
+    this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::OK);
+}
+
+RUST_TESTER_NO_PROFILE void RustTester ::cmdBurstStatus_handler(FwIndexType portNum,
+                                         FwOpcodeType opCode,
+                                         U32 cmdSeq,
+                                         const Fw::CmdResponse& response) {
+    if (response == Fw::CmdResponse::OK) {
+        this->m_burstOk++;
+        this->tlmWrite_BurstResponsesOk(this->m_burstOk);
+    } else {
+        this->m_burstError++;
+        this->tlmWrite_BurstResponsesError(this->m_burstError);
+    }
 }
 
 // ----------------------------------------------------------------------

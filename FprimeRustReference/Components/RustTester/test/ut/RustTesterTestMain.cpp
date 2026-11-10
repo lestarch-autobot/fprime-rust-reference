@@ -15,6 +15,9 @@ TEST(Nominal, UT_RT_6_zeroResetsCounters) { FprimeRustReference::RustTesterTeste
 TEST(Nominal, UT_RT_7_crc32KnownAnswer) { FprimeRustReference::RustTesterTester().crc32KnownAnswer(); }
 TEST(Nominal, UT_RT_8_injectedSnapshotWindows) { FprimeRustReference::RustTesterTester().injectedSnapshotWindows(); }
 TEST(Nominal, UT_RT_9_markFlushesAndResetUnlinks) { FprimeRustReference::RustTesterTester().markFlushesAndResetUnlinks(); }
+TEST(Nominal, UT_RT_10_burstCountBounds) { FprimeRustReference::RustTesterTester().burstCountBounds(); }
+TEST(Nominal, UT_RT_11_burstPacketKnownAnswer) { FprimeRustReference::RustTesterTester().burstPacketKnownAnswer(); }
+TEST(Nominal, UT_RT_12_burstResponseCounting) { FprimeRustReference::RustTesterTester().burstResponseCounting(); }
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

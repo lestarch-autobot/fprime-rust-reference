@@ -68,6 +68,15 @@ class RustTesterTester final : public RustTesterGTestBase {
     //! UT-RT-9: MARK flushes the counters to the on-disk .gcda; count = 0 deletes it (instrumented build)
     void markFlushesAndResetUnlinks();
 
+    //! UT-RT-10: BURST_CMD_U32 count bounds (0 and 17 rejected, 1 and 16 accepted) and copy count
+    void burstCountBounds();
+
+    //! UT-RT-11: burst packet bytes against Fw::CmdPacket (descriptor, opcode, U32 arg) and a raw byte KAT
+    void burstPacketKnownAnswer();
+
+    //! UT-RT-12: burst responses are counted per outcome and reset by the next burst
+    void burstResponseCounting();
+
   private:
     // ----------------------------------------------------------------------
     // Helpers

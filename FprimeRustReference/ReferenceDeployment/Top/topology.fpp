@@ -123,6 +123,13 @@ module FprimeRustReference {
       CdhCore.Subtopology.seqCmdStatus       -> ComCcsds.Subtopology.cmdResponseIn
     }
 
+    connections RustTester {
+      # BURST_CMD_U32 packets enter the dispatcher as sequencer 1 (0 is the uplink router); status comes back on
+      # the matching index so the dispatcher tracks each burst command normally
+      rustTester.cmdBurstOut             -> CdhCore.cmdDisp.seqCmdBuff[1]
+      CdhCore.cmdDisp.seqCmdStatus[1]    -> rustTester.cmdBurstStatus
+    }
+
     connections ComCcsds_FileHandling {
       # File Downlink <-> ComQueue
       FileHandling.Subtopology.fileDownlinkBufferSendOut -> ComCcsds.Subtopology.bufferQueueIn[ComCcsds.Ports_ComBufferQueue.FILE]

@@ -22,6 +22,7 @@ class RustTester final : public RustTesterComponentBase {
     //! Largest window: 8 chunks + CoverageObject + CoverageDumpDone fit the 20-deep CdhCore.cmdDisp queue
     static const U8 MAX_CHUNKS_PER_WINDOW = 8;   //!< events per window stay far below CdhCoreConfig.QueueSizes.events
     static const U32 CHUNK_BYTES = 32;           //!< CoverageChunk payload (8 x U32)
+    static const U8 MAX_BURST = 16;  //!< BURST_CMD_U32 upper bound (below cmdDisp's 20-deep queue)
     //! Capacity of the snapshot storage (gcda bytes of all instrumented objects); sized in RustTester.cpp by the
     //! build (twin: 512 KiB, OFF image: 1 KiB), never in this header so every translation unit sees one layout
     static U32 snapshotCapacity();
@@ -81,9 +82,24 @@ class RustTester final : public RustTesterComponentBase {
     void DUMP_COVERAGE_cmdHandler(FwOpcodeType opCode,  //!< The opcode
                                   U32 cmdSeq,           //!< The command sequence number
                                   U16 start,            //!< First global chunk index of the window
-                                  U8 count  //!< Chunks in the window (0 = zero the counters; > 8 is a
-                                            //!< validation error)
+                                  U8 count              //!< Chunks in the window (0 = zero the counters; > 8 is a
+                                                        //!< validation error)
                                   ) override;
+
+    //! Handler for command BURST_CMD_U32: emit count copies of one command packet (test deployment only)
+    void BURST_CMD_U32_cmdHandler(FwOpcodeType opCode,  //!< The opcode
+                                  U32 cmdSeq,           //!< The command sequence number
+                                  U8 count,             //!< Copies to emit (1..16)
+                                  FwOpcodeType opcode,  //!< Opcode of the burst command
+                                  U32 arg               //!< Its single U32 argument
+                                  ) override;
+
+    //! Handler for input port cmdBurstStatus: count the dispatcher's response to each burst command
+    void cmdBurstStatus_handler(FwIndexType portNum,               //!< The port number
+                                FwOpcodeType opCode,              //!< Command opcode
+                                U32 cmdSeq,                       //!< Command sequence number
+                                const Fw::CmdResponse& response   //!< Dispatcher response
+                                ) override;
 
     // ----------------------------------------------------------------------
     // Coverage dump path (never instrumented, see RustTester.cpp)
@@ -148,6 +164,8 @@ class RustTester final : public RustTesterComponentBase {
     char* m_pathOut;                        //!< FILE_PATH: destination buffer
     FwSizeType m_pathCapacity;              //!< FILE_PATH: destination capacity
     bool m_pathFound;                       //!< FILE_PATH: the path was copied
+    U32 m_burstOk;                          //!< burst responses == OK since the last BURST_CMD_U32
+    U32 m_burstError;                       //!< burst responses != OK since the last BURST_CMD_U32
     static bool s_registered;               //!< objects registered with libgcov for __gcov_reset (process-wide)
     static U32 s_instances;                 //!< live instances: the storage is single-instance
 };

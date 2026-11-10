@@ -28,6 +28,19 @@ module FprimeRustReference {
     @ Standard event interface
     import Fw.Event
 
+    @ Telemetry port
+    telemetry port tlmOut
+
+    # ----------------------------------------------------------------------
+    # General ports
+    # ----------------------------------------------------------------------
+
+    @ Command packets of a BURST_CMD_U32 burst, to one of the command dispatcher's sequencer inputs
+    output port cmdBurstOut: Fw.Com
+
+    @ Dispatcher status of each burst command (from the matching seqCmdStatus index)
+    sync input port cmdBurstStatus: Fw.CmdResponse
+
     # ----------------------------------------------------------------------
     # Commands
     # ----------------------------------------------------------------------
@@ -45,6 +58,15 @@ module FprimeRustReference {
       start: U16 @< First global chunk index of the window
       count: U8 @< Chunks in the window (0 = zero the counters; > 8 is a validation error)
     ) opcode 1
+
+    @ Deterministic command burst (test deployment only): builds one Fw.ComBuffer command packet
+    @ (FW_PACKET_COMMAND, opcode, U32 arg) and emits it count times on cmdBurstOut in the handler's thread,
+    @ so the dispatcher sees count back-to-back commands; count outside 1..16 is a validation error.
+    sync command BURST_CMD_U32(
+      count: U8 @< Copies to emit (1..16)
+      $opcode: FwOpcodeType @< Opcode of the burst command
+      arg: U32 @< Its single U32 argument
+    ) opcode 2
 
     # ----------------------------------------------------------------------
     # Events
@@ -96,6 +118,22 @@ module FprimeRustReference {
     event CoverageRejected(
       reason: DumpReject @< Rejection reason
     ) severity warning low id 6 format "coverage dump rejected: {}"
+
+    @ A BURST_CMD_U32 burst was emitted (after the loop)
+    event BurstSent(
+      count: U8 @< Copies emitted
+      $opcode: FwOpcodeType @< Opcode of the burst command
+    ) severity activity low id 7 format "burst sent: {} x opcode {x}"
+
+    # ----------------------------------------------------------------------
+    # Telemetry
+    # ----------------------------------------------------------------------
+
+    @ Burst responses reported OK by the dispatcher since the last BURST_CMD_U32
+    telemetry BurstResponsesOk: U32 id 0
+
+    @ Burst responses reported other than OK (e.g. BUSY from an overflow hook) since the last BURST_CMD_U32
+    telemetry BurstResponsesError: U32 id 1
 
   }
 

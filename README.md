@@ -156,6 +156,13 @@ fprime-util build --build-cache "$PWD/../../build-fprime-automatic-native-cov" -
 fth coverage-system --record <events.jsonl dir> --gcno-root "$PWD/../../build-fprime-automatic-native-cov"     --project-root "$PWD/../.." --filter FprimeRustReference/Components/ --filter lib/fprime-rust/FprimeRust/     --filter build-fprime-automatic-native-cov/FprimeRustReference/Components/ --gcov gcov-15 --out <out>
 ```
 
+`BURST_CMD_U32(count, opcode, arg)` (test deployment only) replays one `FW_PACKET_COMMAND` packet `count` times
+(1..16) into `CdhCore.cmdDisp.seqCmdBuff[1]` from inside the deployment, so the plan can fill `RustMonitor`'s
+10-deep `SET_LIMIT` queue within one tick and prove the overflow hook (`OpCodeError(..., BUSY)` from the
+dispatcher); `BurstSent` reports the burst, `BurstResponsesOk`/`BurstResponsesError` count the dispatcher's
+responses (`seqCmdStatus[1]`). Exit-time flush: a file-scope `init_priority(101)` guard registers libgcov and the
+atexit flush before the topology statics, so destructor increments are counted.
+
 Both caches install into the same `build-artifacts/` directory, so copy the twin's `bin/` and dictionary aside
 before building the other image. The filter-to-scope mapping and the `.gcno` locations are in
 `Components/RustTester/docs/sdd.md`.

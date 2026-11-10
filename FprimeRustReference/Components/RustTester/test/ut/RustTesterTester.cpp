@@ -6,6 +6,9 @@
 
 #include "RustTesterTester.hpp"
 
+#include <Fw/Cmd/CmdPacket.hpp>
+#include <Fw/Com/ComPacket.hpp>
+
 #include "Fw/Test/UnitTest.hpp"
 #include "Os/FileSystem.hpp"
 
@@ -336,4 +339,93 @@ U32 RustTesterTester ::walkAll(U32& objects, U32& totalBytes, U32& crc, U32& crc
     return chunks;
 }
 
+
+// ----------------------------------------------------------------------
+// BURST_CMD_U32 (UT-RT-10..12)
+// ----------------------------------------------------------------------
+
+void RustTesterTester ::burstCountBounds() {
+    const FwOpcodeType burstOpcode = 0x10017000;  // rustMonitor.SET_LIMIT in the reference deployment
+    this->sendCmd_BURST_CMD_U32(0, 1, 0, burstOpcode, 7);
+    ASSERT_CMD_RESPONSE_SIZE(1);
+    ASSERT_CMD_RESPONSE(0, RustTester::OPCODE_BURST_CMD_U32, 1, Fw::CmdResponse::VALIDATION_ERROR);
+    ASSERT_from_cmdBurstOut_SIZE(0);
+
+    this->sendCmd_BURST_CMD_U32(0, 2, 17, burstOpcode, 7);
+    ASSERT_CMD_RESPONSE_SIZE(2);
+    ASSERT_CMD_RESPONSE(1, RustTester::OPCODE_BURST_CMD_U32, 2, Fw::CmdResponse::VALIDATION_ERROR);
+    ASSERT_from_cmdBurstOut_SIZE(0);
+    ASSERT_EVENTS_BurstSent_SIZE(0);
+
+    this->sendCmd_BURST_CMD_U32(0, 3, 1, burstOpcode, 7);
+    ASSERT_CMD_RESPONSE(2, RustTester::OPCODE_BURST_CMD_U32, 3, Fw::CmdResponse::OK);
+    ASSERT_from_cmdBurstOut_SIZE(1);
+    ASSERT_EVENTS_BurstSent_SIZE(1);
+    ASSERT_EVENTS_BurstSent(0, 1, burstOpcode);
+
+    this->clearHistory();
+    this->sendCmd_BURST_CMD_U32(0, 4, 16, burstOpcode, 7);
+    ASSERT_CMD_RESPONSE(0, RustTester::OPCODE_BURST_CMD_U32, 4, Fw::CmdResponse::OK);
+    ASSERT_from_cmdBurstOut_SIZE(16);
+    ASSERT_EVENTS_BurstSent_SIZE(1);
+    ASSERT_EVENTS_BurstSent(0, 16, burstOpcode);
+    for (U32 i = 0; i < 16; i++) {
+        ASSERT_EQ(this->fromPortHistory_cmdBurstOut->at(i).context, i);
+    }
+}
+
+void RustTesterTester ::burstPacketKnownAnswer() {
+    const FwOpcodeType burstOpcode = 0x10017000;
+    const U32 arg = 0x01020304;
+    this->sendCmd_BURST_CMD_U32(0, 1, 2, burstOpcode, arg);
+    ASSERT_from_cmdBurstOut_SIZE(2);
+
+    // raw bytes: FW_PACKET_COMMAND descriptor (FwPacketDescriptorType), opcode (FwOpcodeType), U32 arg, big endian
+    const U8 expected[] = {0x00, 0x00, 0x10, 0x01, 0x70, 0x00, 0x01, 0x02, 0x03, 0x04};
+    static_assert(sizeof(FwPacketDescriptorType) == 2 && sizeof(FwOpcodeType) == 4, "KAT assumes U16 descriptor, U32 opcode");
+    for (U32 copy = 0; copy < 2; copy++) {
+        Fw::ComBuffer data = this->fromPortHistory_cmdBurstOut->at(copy).data;
+        ASSERT_EQ(data.getSize(), sizeof(expected));
+        for (U32 i = 0; i < sizeof(expected); i++) {
+            ASSERT_EQ(data.getBuffAddr()[i], expected[i]) << "copy " << copy << " byte " << i;
+        }
+        // the dispatcher's own parser must accept it and see the same opcode and argument
+        Fw::CmdPacket pkt;
+        ASSERT_EQ(pkt.deserializeFrom(data), Fw::FW_SERIALIZE_OK);
+        ASSERT_EQ(pkt.getOpCode(), burstOpcode);
+        U32 seen = 0;
+        ASSERT_EQ(pkt.getArgBuffer().deserializeTo(seen), Fw::FW_SERIALIZE_OK);
+        ASSERT_EQ(seen, arg);
+        ASSERT_EQ(pkt.getArgBuffer().getDeserializeSizeLeft(), 0u);
+    }
+}
+
+void RustTesterTester ::burstResponseCounting() {
+    const FwOpcodeType burstOpcode = 0x10017000;
+    this->sendCmd_BURST_CMD_U32(0, 1, 12, burstOpcode, 7);
+    ASSERT_from_cmdBurstOut_SIZE(12);
+    // the burst zeroes both channels first
+    ASSERT_TLM_BurstResponsesOk_SIZE(1);
+    ASSERT_TLM_BurstResponsesOk(0, 0);
+    ASSERT_TLM_BurstResponsesError_SIZE(1);
+    ASSERT_TLM_BurstResponsesError(0, 0);
+
+    for (U32 i = 0; i < 10; i++) {
+        this->invoke_to_cmdBurstStatus(0, burstOpcode, i, Fw::CmdResponse(Fw::CmdResponse::OK));
+    }
+    this->invoke_to_cmdBurstStatus(0, burstOpcode, 10, Fw::CmdResponse(Fw::CmdResponse::BUSY));
+    this->invoke_to_cmdBurstStatus(0, burstOpcode, 11, Fw::CmdResponse(Fw::CmdResponse::EXECUTION_ERROR));
+    ASSERT_TLM_BurstResponsesOk_SIZE(11);
+    ASSERT_TLM_BurstResponsesOk(10, 10);
+    ASSERT_TLM_BurstResponsesError_SIZE(3);
+    ASSERT_TLM_BurstResponsesError(2, 2);
+
+    // a new burst starts both counts over
+    this->clearHistory();
+    this->sendCmd_BURST_CMD_U32(0, 2, 1, burstOpcode, 7);
+    ASSERT_TLM_BurstResponsesOk(0, 0);
+    ASSERT_TLM_BurstResponsesError(0, 0);
+    this->invoke_to_cmdBurstStatus(0, burstOpcode, 0, Fw::CmdResponse(Fw::CmdResponse::OK));
+    ASSERT_TLM_BurstResponsesOk(1, 1);
+}
 }  // namespace FprimeRustReference
