@@ -5,6 +5,7 @@
 // ======================================================================
 
 #include "RelayTester.hpp"
+#include "Fw/Test/UnitTest.hpp"
 
 namespace FprimeRustReference {
 
@@ -26,12 +27,16 @@ RelayTester::~RelayTester() { this->component.deinit(); }
 // ----------------------------------------------------------------------
 
 void RelayTester::forwardsCount() {
+    REQUIREMENT("REQ-Relay-001");
+    COMMENT("UT-Relay-1: one countIn(7) invocation produces one countOut(7)");
     this->invoke_to_countIn(0, 7);
     ASSERT_from_countOut_SIZE(1);
     ASSERT_from_countOut(0, 7);
 }
 
 void RelayTester::relayedTelemetry() {
+    REQUIREMENT("REQ-Relay-002");
+    COMMENT("UT-Relay-2: three invocations publish Relayed = 1, 2, 3; with countOut unconnected the count is dropped and Relayed still increments");
     for (U32 i = 1; i <= 3; i++) {
         this->invoke_to_countIn(0, i);
         ASSERT_TLM_Relayed_SIZE(i);
@@ -41,6 +46,8 @@ void RelayTester::relayedTelemetry() {
 }
 
 void RelayTester::unconnectedOutput() {
+    REQUIREMENT("REQ-Relay-002");
+    COMMENT("UT-Relay-2: three invocations publish Relayed = 1, 2, 3; with countOut unconnected the count is dropped and Relayed still increments");
     // A second instance whose countOut is left unconnected; telemetry and time go to this tester
     Relay bare("bare");
     bare.init(0);

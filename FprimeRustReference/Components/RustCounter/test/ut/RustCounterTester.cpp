@@ -6,6 +6,7 @@
 
 #include <limits>
 #include "RustCounterTester.hpp"
+#include "Fw/Test/UnitTest.hpp"
 
 namespace FprimeRustReference {
 
@@ -38,6 +39,9 @@ void RustCounterTester::reset() {
 }
 
 void RustCounterTester::resetAfterBump() {
+    REQUIREMENT("REQ-RustCounter-001");
+    REQUIREMENT("REQ-RustCounter-004");
+    COMMENT("UT-RC-1: RESET after BUMP(5): ResetIssued, Counter 0, countOut(0), response OK");
     this->paramSet_THRESHOLD(100, Fw::ParamValid::VALID);
     this->component.loadParameters();
     this->bump(5);
@@ -55,6 +59,9 @@ void RustCounterTester::resetAfterBump() {
 }
 
 void RustCounterTester::bumpWithinAndPastThreshold() {
+    REQUIREMENT("REQ-RustCounter-002");
+    REQUIREMENT("REQ-RustCounter-003");
+    COMMENT("UT-RC-2: THRESHOLD 10: BUMP(4) → Bumped(4); BUMP(6) → Bumped(10) (equality); BUMP(1) → Saturated(10, 10), counter 10; BUMP(0) → Bumped(10)");
     this->paramSet_THRESHOLD(10, Fw::ParamValid::VALID);
     this->component.loadParameters();
     this->bump(4);
@@ -78,6 +85,8 @@ void RustCounterTester::bumpWithinAndPastThreshold() {
 }
 
 void RustCounterTester::bumpMaxNoWrap() {
+    REQUIREMENT("REQ-RustCounter-003");
+    COMMENT("UT-RC-3: counter 1, BUMP(4294967295) → Saturated(100, 100), no panic");
     // No ground value: loadParameters applies the FPP default (100)
     this->component.loadParameters();
     this->bump(1);
@@ -89,6 +98,8 @@ void RustCounterTester::bumpMaxNoWrap() {
 }
 
 void RustCounterTester::thresholdUpdateTakesEffect() {
+    REQUIREMENT("REQ-RustCounter-006");
+    COMMENT("UT-RC-4: THRESHOLD set to 3 while counter is 5: next BUMP(1) → Saturated(3, 3), counter 3");
     this->paramSet_THRESHOLD(100, Fw::ParamValid::VALID);
     this->component.loadParameters();
     this->bump(5);
@@ -103,6 +114,8 @@ void RustCounterTester::thresholdUpdateTakesEffect() {
 }
 
 void RustCounterTester::ticks() {
+    REQUIREMENT("REQ-RustCounter-005");
+    COMMENT("UT-RC-5: three tick calls: TickCount 1, 2, 3 and Counter written each time; no countOut");
     for (U32 i = 1; i <= 3; i++) {
         this->invoke_to_tick(0, 0);
         this->component.doDispatch();
