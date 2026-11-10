@@ -11,6 +11,7 @@
 
 #include "Fw/Types/Assert.hpp"
 #include "Os/File.hpp"
+#include "config/FppConstantsAc.hpp"
 #include "Os/FileSystem.hpp"
 
 // libgcov interface (GCC >= 12 with -fprofile-info-section=gcov_info), declared without <gcov.h>. In the
@@ -20,8 +21,10 @@
 // section name whenever the section exists.
 #if defined(FPRIME_RUST_REFERENCE_COVERAGE) && FPRIME_RUST_REFERENCE_COVERAGE
 #define RUST_TESTER_LIBGCOV
+#define RUST_TESTER_HAVE(sym) true  // strong reference: comparing its address to null would be tautological
 #else
 #define RUST_TESTER_LIBGCOV __attribute__((weak))
+#define RUST_TESTER_HAVE(sym) ((sym) != nullptr)
 #endif
 struct gcov_info;
 extern "C" {
@@ -143,7 +146,9 @@ RUST_TESTER_NO_PROFILE U32 RustTester ::crc32(U32 crc, const U8* data, FwSizeTyp
 RUST_TESTER_NO_PROFILE void RustTester ::MARK_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, U32 id) {
     this->log_ACTIVITY_LO_Marker(id);
     // twin: the marker is also the persistence point — counters so far go to the on-disk .gcda files
-    // (cumulative merge) and the in-memory counters restart at zero, so nothing is counted twice
+    // (cumulative merge) and the in-memory counters restart at zero, so nothing is counted twice (increments
+    // landing between the dump and the reset are lost; a SIGKILL or assert-abort loses everything since the
+    // last marker)
     RustTester::flushCounters();
     this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::OK);
 }
@@ -164,6 +169,11 @@ RUST_TESTER_NO_PROFILE void RustTester ::DUMP_COVERAGE_cmdHandler(FwOpcodeType o
     if (count == 0) {
         this->zeroCounters();
         this->m_snapshotValid = false;
+        if (this->m_fileError) {
+            this->log_WARNING_LO_CoverageRejected(RustTester_DumpReject::FILE_ERROR);
+            this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::EXECUTION_ERROR);
+            return;
+        }
         this->log_ACTIVITY_LO_CoverageReset(
             static_cast<U32>(__stop_gcov_info - __start_gcov_info));
         this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::OK);
@@ -283,7 +293,7 @@ RUST_TESTER_NO_PROFILE void RustTester ::emitWindow(U32 first, U32 count) {
 }
 
 RUST_TESTER_NO_PROFILE void RustTester ::registerObjects() {
-    if (__gcov_init == nullptr || !RustTester::coverageAvailable() || RustTester::s_registered) {
+    if (!RUST_TESTER_HAVE(__gcov_init) || !RustTester::coverageAvailable() || RustTester::s_registered) {
         return;
     }
     // -fprofile-info-section skips libgcov's constructor registration; register the section once per process so
@@ -295,15 +305,21 @@ RUST_TESTER_NO_PROFILE void RustTester ::registerObjects() {
         __gcov_init(*it);
     }
     RustTester::s_registered = true;
-    (void)std::atexit(&RustTester::flushAtExit);
+    const int status = std::atexit(&RustTester::flushAtExit);
+    FW_ASSERT(status == 0, static_cast<FwAssertArgType>(status));
 }
 
 RUST_TESTER_NO_PROFILE void RustTester ::flushCounters() {
-    if (__gcov_dump == nullptr || __gcov_reset == nullptr || !RustTester::s_registered) {
+    // re-entrancy guard: with GCOV_EXIT_AT_ERROR libgcov calls exit() inside __gcov_dump and the atexit flush
+    // would re-enter it
+    static bool flushing = false;
+    if (flushing || !RUST_TESTER_HAVE(__gcov_dump) || !RUST_TESTER_HAVE(__gcov_reset) || !RustTester::s_registered) {
         return;
     }
+    flushing = true;
     __gcov_dump();   // merge the in-memory counters into the on-disk .gcda of every registered object
     __gcov_reset();  // and start again from zero, so the files stay cumulative without double counting
+    flushing = false;
 }
 
 RUST_TESTER_NO_PROFILE void RustTester ::flushAtExit() {
@@ -311,12 +327,14 @@ RUST_TESTER_NO_PROFILE void RustTester ::flushAtExit() {
 }
 
 RUST_TESTER_NO_PROFILE void RustTester ::zeroCounters() {
-    if (__gcov_reset == nullptr) {
+    this->m_fileError = false;
+    if (!RUST_TESTER_HAVE(__gcov_reset)) {
         return;
     }
     RustTester::registerObjects();
-    __gcov_reset();
+    // files first: a crash between the two steps must not leave a stale file that the next flush merges into
     this->forEachObjectFile(FILE_UNLINK);
+    __gcov_reset();
 }
 
 RUST_TESTER_NO_PROFILE void RustTester ::filenameCallback(const char* filename, void* arg) {
@@ -330,8 +348,14 @@ RUST_TESTER_NO_PROFILE void RustTester ::filenameCallback(const char* filename, 
         case FILE_READ: {
             FW_ASSERT(self->m_objectCount < MAX_OBJECTS, static_cast<FwAssertArgType>(self->m_objectCount));
             ObjectRecord& record = self->m_objects[self->m_objectCount];
-            record.nameCrc = RustTester::crc32(0, reinterpret_cast<const U8*>(filename),
-                                               static_cast<FwSizeType>(strlen(filename)));
+            const FwSizeType pathLength = static_cast<FwSizeType>(strlen(filename));
+            record.nameCrc = RustTester::crc32(0, reinterpret_cast<const U8*>(filename), pathLength);
+            // Os::File::open asserts on a path longer than the F Prime file-name size; a deep build cache must
+            // not take the process down from a ground command
+            if (pathLength >= FileNameStringSize) {
+                self->m_fileError = true;
+                return;
+            }
             Os::File file;
             if (file.open(filename, Os::File::OPEN_READ) != Os::File::OP_OK) {
                 self->m_fileError = true;
@@ -342,24 +366,37 @@ RUST_TESTER_NO_PROFILE void RustTester ::filenameCallback(const char* filename, 
                 self->m_fileError = true;
                 return;
             }
+            if (size == 0) {
+                // a flushed object always has at least its header: an empty file is not a gcda stream
+                self->m_fileError = true;
+                return;
+            }
             if (size > static_cast<FwSizeType>(SNAPSHOT_BYTES - self->m_snapshotBytes)) {
                 self->m_snapshotOverflow = true;
                 return;
             }
-            FwSizeType read = size;
-            if (size > 0 && (file.read(&self->m_snapshot[self->m_snapshotBytes], read, Os::File::WAIT) !=
-                                 Os::File::OP_OK ||
-                             read != size)) {
+            FwSizeType got = size;
+            if (file.read(&self->m_snapshot[self->m_snapshotBytes], got, Os::File::WAIT) != Os::File::OP_OK ||
+                got != size) {
                 self->m_fileError = true;
                 return;
             }
             self->m_snapshotBytes += static_cast<U32>(size);
             break;
         }
-        case FILE_UNLINK:
-            // a file that does not exist yet (never flushed) is already in the wanted state
-            (void)Os::FileSystem::removeFile(filename);
+        case FILE_UNLINK: {
+            // a file that does not exist yet (never flushed) is already in the wanted state; any other failure
+            // would leave a file the next flush merges into, so the reset must be reported as failed
+            if (strlen(filename) >= FileNameStringSize) {
+                self->m_fileError = true;
+                break;
+            }
+            const Os::FileSystem::Status status = Os::FileSystem::removeFile(filename);
+            if (status != Os::FileSystem::OP_OK && status != Os::FileSystem::DOESNT_EXIST) {
+                self->m_fileError = true;
+            }
             break;
+        }
         case FILE_PATH:
             if (self->m_walkIndex == self->m_pathIndex && self->m_pathOut != nullptr) {
                 const FwSizeType length = static_cast<FwSizeType>(strlen(filename));
@@ -388,11 +425,11 @@ RUST_TESTER_NO_PROFILE void* RustTester ::allocateCallback(unsigned length, void
     // 8-byte aligned bump allocation from the arena (alignas(8) member, reset per object). libgcov asks only
     // for top-n counter scratch, which -fprofile-arcs -ftest-coverage never emit, and caches the one block it
     // gets in a static, so a single request per object is the invariant; bound before rounding (no wrap).
-    const U32 free = ARENA_BYTES - self->m_arenaUsed;
-    FW_ASSERT(static_cast<U32>(length) <= free, static_cast<FwAssertArgType>(length));
+    const U32 available = ARENA_BYTES - self->m_arenaUsed;
+    FW_ASSERT(static_cast<U32>(length) <= available, static_cast<FwAssertArgType>(length));
     const U32 aligned = (static_cast<U32>(length) + 7U) & ~7U;
     void* const block = &self->m_arena[self->m_arenaUsed];
-    self->m_arenaUsed += (aligned <= free) ? aligned : free;
+    self->m_arenaUsed += (aligned <= available) ? aligned : available;
     return block;
 }
 

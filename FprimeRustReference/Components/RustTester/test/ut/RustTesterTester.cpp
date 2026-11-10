@@ -260,6 +260,11 @@ void RustTesterTester ::markFlushesAndResetUnlinks() {
     ASSERT_EVENTS_Marker_SIZE(1);
     ASSERT_EQ(Os::FileSystem::getFileSize(path, size), Os::FileSystem::OP_OK) << path << " should exist";
     ASSERT_GT(size, 0U);
+    // a second marker merges into the same file (cumulative): it stays, at least as large
+    this->sendCmd_MARK(0, 2, 10);
+    FwSizeType size2 = 0;
+    ASSERT_EQ(Os::FileSystem::getFileSize(path, size2), Os::FileSystem::OP_OK) << path << " should still exist";
+    ASSERT_GE(size2, size);
     this->dump(0, 0, Fw::CmdResponse::OK);
     ASSERT_NE(Os::FileSystem::getFileSize(path, size), Os::FileSystem::OP_OK) << path << " should be gone";
 }

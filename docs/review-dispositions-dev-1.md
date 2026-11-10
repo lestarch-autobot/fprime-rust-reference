@@ -106,3 +106,19 @@ snapshots the on-disk `.gcda` files (paths from libgcov's filename callback, `na
 `count = 0` → `__gcov_reset()` + delete the files (`CoverageReset`); OFF image unchanged (weak symbols,
 `CoverageUnavailable`). New `DumpReject::FILE_ERROR`; REQ-RustTester-012/013; UT-RT-9; UT-RT-6 flushes 50 markers
 first. Proof: two-process scenario (see the re-entry report). Supersedes the earlier "no exit-time dump" note.
+
+#### D2' local lenses (correctness Go, F Prime code Go-after-1–2, security No-Go→fixed)
+- code 1 / security 2 / correctness 2 — `removeFile` status discarded: FIXED (only `OP_OK`/`DOESNT_EXIST` accepted; a
+  reset that cannot delete answers `CoverageRejected(FILE_ERROR)` + `EXECUTION_ERROR`; REQ-RustTester-010 reworded).
+- code 2 — `std::atexit` status unchecked: FIXED (`FW_ASSERT(status == 0)`).
+- security 1 — `Os::File::open` asserts on a path ≥ `FileNameStringSize`: FIXED (length checked first → `FILE_ERROR`).
+- security 5 — exit-path re-entrancy with `GCOV_EXIT_AT_ERROR`: FIXED (static guard in `flushCounters`).
+- correctness 3 — empty file accepted: FIXED (`size == 0` → `FILE_ERROR`).
+- code 3/5/6/12, correctness 7 — stale comments, `-Waddress` tautology (`RUST_TESTER_HAVE`), `free`/`read` names,
+  lost increments between dump and reset: FIXED (code + SDD).
+- code 9 — REQ-012 verification: FIXED (UT-RT-9 second marker cumulative; REQ-012 `Unit Test; Integration Test`, the
+  two-process proof is the system evidence). code 15 — unlink before reset: FIXED.
+- security 3/4/6/7/8, correctness 1/4/5/6, code 10/11/13/14 — failed libgcov dump invisible (stderr only),
+  `GCOV_PREFIX*` unsupported, content not validated beyond non-empty, dump/reset window loses increments, one
+  process per cache, `Runs: 0` after an in-process reset, FILE_ERROR UT via chmod, path caching: documented in the
+  SDD "Limits of the hosted scheme" (future work); `init` hiding the base init documented in the header.

@@ -40,7 +40,8 @@ class RustTester final : public RustTesterComponentBase {
     ~RustTester();
 
     //! Initialize the component; in the coverage twin also registers the gcov information section with libgcov
-    //! (once per process) and arranges the exit-time flush
+    //! (once per process) and arranges the exit-time flush. Hides the non-virtual autocoded init: call it on the
+    //! derived type (the topology and the unit tests do)
     void init(FwEnumStoreType instance = 0);
 
     //! Whether the image carries a gcov information section (built with FPRIME_RUST_REFERENCE_COVERAGE)
@@ -86,7 +87,8 @@ class RustTester final : public RustTesterComponentBase {
     // Coverage dump path (never instrumented, see RustTester.cpp)
     // ----------------------------------------------------------------------
 
-    //! Serialize every object of the gcov information section into m_snapshot; false when it does not fit
+    //! Flush the counters and read every object's on-disk .gcda into m_snapshot; false when a file does not fit
+    //! (m_snapshotOverflow) or cannot be read (m_fileError)
     bool takeSnapshot();
 
     //! Emit the window [first, first + count) from the snapshot
@@ -111,7 +113,8 @@ class RustTester final : public RustTesterComponentBase {
     //! Zero the arc counters of every object and delete their on-disk .gcda files
     void zeroCounters();
 
-    //! Walk the section, calling filenameCallback in `mode` for every object; false when mode FILE_READ did not fit
+    //! Walk the section, calling filenameCallback in `mode` for every object (FILE_READ sets m_snapshotOverflow /
+    //! m_fileError when a file does not fit or cannot be read)
     void forEachObjectFile(FileMode mode);
 
     //! Path of the .gcda file of object `index` (unit tests); false when there is no such object
@@ -132,7 +135,7 @@ class RustTester final : public RustTesterComponentBase {
     U32 m_snapshotBytes;                    //!< bytes used in m_snapshot
     U32 m_snapshotCrc;                      //!< CRC-32 over m_snapshot[0 .. m_snapshotBytes)
     bool m_snapshotValid;                   //!< a window at chunk 0 has been taken since the last reset
-    bool m_snapshotOverflow;                //!< the walk did not fit (set by dumpCallback)
+    bool m_snapshotOverflow;                //!< the walk did not fit (set by filenameCallback / forEachObjectFile)
     U8* const m_arena;                      //!< allocateCallback scratch (8-byte aligned file-scope storage), reset per object
     U32 m_arenaUsed;                        //!< bytes handed out of m_arena for the current object
     FileMode m_fileMode;                    //!< what filenameCallback does for the object being walked
