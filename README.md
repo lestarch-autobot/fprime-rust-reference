@@ -115,6 +115,26 @@ Before every launch make sure no other deployment/GDS actor is up (`ss -ltnp | g
 processes you started by their PID only. The stimulus must stay blind to the draw: no fixture exposes the
 sealed faults, and `fth verify-plan --tests` refuses a test that names them.
 
+### Coverage evidence (development only, never the RfR image)
+
+```bash
+# twin build (see "Harness tester and coverage twin"); always name the build cache explicitly — without
+# --build-cache fprime-util picks the most recent cache and installs the twin into build-artifacts/
+# pure image  : build-fprime-automatic-native/bin/Linux/FprimeRustReference_ReferenceDeployment   (nm | grep -c ' T __gcov' == 0)
+# twin image  : build-fprime-automatic-native-cov/bin/Linux/FprimeRustReference_ReferenceDeployment
+# coverage run: the main plan on the twin; bench-cov.json's flash step deletes every .gcda under the twin cache first
+fth manifest ... --image FprimeRustReference=<twin.bin> --bench $T/bench-cov.json -o manifest-cov.json
+fth run --run-dir $OUT/runs/cov-run --manifest manifest-cov.json --plan $T/plan.json --bench $T/bench-cov.json --tests $T --unsealed
+# dump run + UT coverage + pure run -> dev-evidence/ (dev-campaign makes the dump manifest and runs test/int/gcov-dump
+# with bench-dump.json, which leaves the .gcda files alone; the three --filter values are the plan's coverage.system.scope)
+fth dev-campaign --out $OUT/dev-evidence --plan $T/plan.json --tests $T --bench $T/bench-dump.json --ut-coverage <gcovr dir> \
+  --coverage-run $OUT/runs/cov-run --coverage-manifest manifest-cov.json --dump-run $OUT/runs/dump-run \
+  --dump-plan $T/gcov-dump/plan.json --dump-tests $T/gcov-dump --gcno-root build-fprime-automatic-native-cov --project-root . \
+  --filter FprimeRustReference/Components/ --filter lib/fprime-rust/FprimeRust/ \
+  --filter 'build-fprime-automatic-native-cov/FprimeRustReference/Components/.*/(?!.*Ac\.cpp$)[^/]*\.cpp$' \
+  --gcov <gcov of the GCC that built the twin> --pure-run $OUT/runs/clean --pure-manifest manifest.json
+```
+
 ## Harness tester and coverage twin
 
 `FprimeRustReference.RustTester` (`rustTester`, base id 0x10027000, plain C++, `Components/RustTester/`) is the

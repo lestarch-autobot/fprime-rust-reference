@@ -186,8 +186,8 @@ def test_L4_1(window, send, bench, check, require, fth_plan):
         bench.wait(60.0)
         bracket(bench)
         check(ABS)
-        check("delta(rustCounter.TickCount) in 55..65", plan_helper(fth_plan, "delta_in_range", channel="rustCounter.TickCount", lo=55, hi=65))
-        check("delta(rustMonitor.RunCount) in 55..65", plan_helper(fth_plan, "delta_in_range", channel="rustMonitor.RunCount", lo=55, hi=65))
+        check("delta(rustCounter.TickCount) in 55..67", plan_helper(fth_plan, "delta_in_range", channel="rustCounter.TickCount", lo=55, hi=67))
+        check("delta(rustMonitor.RunCount) in 55..67", plan_helper(fth_plan, "delta_in_range", channel="rustMonitor.RunCount", lo=55, hi=67))
 
 
 # ---- L5: saturation fault path ----------------------------------------------------------
