@@ -15,7 +15,7 @@ async typed input port, a rejectable command, and events of two severities.
 | REQ-RustMonitor-002 | SET_LIMIT with limit zero shall respond VALIDATION_ERROR, emit `InvalidLimit` and leave the limit unchanged. | Unit Test; Integration Test: L6-1 |
 | REQ-RustMonitor-003 | Each count received shall be published on `LastCount`. | Unit Test; Integration Test: L2-3, L2-5, L7-1 |
 | REQ-RustMonitor-004 | A count greater than the limit shall emit `LimitExceeded` and increment and publish `Exceedances`. | Unit Test; Integration Test: L2-5 |
-| REQ-RustMonitor-005 | Each `run` shall handle the queued counts and commands, then increment and publish `RunCount` and publish `Limit`. | Unit Test; Integration Test: L2-4, L4-1 |
+| REQ-RustMonitor-005 | Each `run` shall deliver every queued count and command to its handler, then increment and publish `RunCount` and publish `Limit`. | Unit Test; Integration Test: L2-4, L4-1 |
 | REQ-RustMonitor-006 | Until SET_LIMIT is accepted, the limit shall be 4294967295. | Unit Test; Integration Test: L2-5, L6-1 |
 
 Command table: `SET_LIMIT(limit: U32, 1..=4294967295)`. Event table: `LimitSet(limit)`, `InvalidLimit(limit)`,
@@ -60,9 +60,10 @@ Parameters: none.
 ### Configure
 
 Instance: queued, queue `Default.QUEUE_SIZE` (10); `run` driven by rate group 1 (1 Hz, see RustCounter
-§Configure). A queue-full count is dropped without trace (F Prime neither counts nor reports a `drop`); the
+§Configure). A queue-full count is dropped without report (F Prime counts it in `getNumMsgsDropped()` but emits nothing); the
 reference accepts a missed comparison because counts arrive only from RustCounter commands and the GDS command
-rate stays below the 10-per-run queue depth; a flight monitor would use `hook` with a dropped-count channel.
+rate stays below the 10-per-run queue depth; a flight monitor would publish `ctx.num_msgs_dropped()` each run or
+use `hook` with a dropped-count channel.
 `SET_LIMIT` keeps the F Prime default `assert` on queue full (as every async command in the deployment does):
 the operational bound is fewer than 10 `SET_LIMIT`s plus counts within one 1 Hz run (plan decision log 17). Source files: `RustMonitor.fpp`,
 `RustMonitor.rs` only.

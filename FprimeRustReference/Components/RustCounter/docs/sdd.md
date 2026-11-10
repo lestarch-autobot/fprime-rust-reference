@@ -73,8 +73,8 @@ reads THRESHOLD (`paramGet_THRESHOLD`, validity ignored: the FPP default applies
 computes `counter.saturating_add(amount)`, and chooses `Saturated` (clamping to THRESHOLD, also when
 THRESHOLD was lowered below the current counter) or `Bumped`; RESET clears. Each command completion writes
 `Counter` and sends the value on `countOut`; each tick increments `TickCount` and writes `TickCount` and
-`Counter`. Both commands respond `OK`; there is no rejectable input. All handlers run on the component's
-thread.
+`Counter`. Both commands respond `OK`; there is no rejectable input. All port and command handlers run on the
+component's thread; `parameter_updated` (default no-op) would run on the command caller's thread.
 
 ```mermaid
 sequenceDiagram

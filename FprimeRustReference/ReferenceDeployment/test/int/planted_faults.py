@@ -54,17 +54,22 @@ def version_payloads_present(ctx, events):
 def prmdb_record_equals(ctx, path, id, value):
     """The downlinked PrmDb.dat (record/raw/<path>) holds parameter ``id`` with the U32 ``value``.
 
-    File format (Svc/PrmDb/docs/sdd.md §3.2): U32 CRC32 of the body, then records of U8 delimiter 0xA5,
-    U32 record size, FwPrmIdType (U32) id, serialized value. UNVERIFIED when the file is absent (the
-    stimulus never produced it), FAIL on a CRC, delimiter, missing-id or value mismatch.
+    File format (Svc/PrmDb/docs/sdd.md §3.2, PrmDbImpl.cpp): U32 CRC32 over the bytes that follow it, then
+    records of U8 delimiter 0xA5, U32 record size, FwPrmIdType (U32) id, serialized value. On a complete
+    window an absent file is FAIL (no file was downlinked); FAIL on a CRC, delimiter, missing-id or value
+    mismatch. UNVERIFIED is never returned here: a torn window is already UNVERIFIED by the completeness checks.
     """
     import struct
-    f = ctx.record_path(path) if hasattr(ctx, "record_path") else None
-    if f is None or not f.exists():
-        return False, f"{path} absent from the record", [], True
+    import zlib
+    f = ctx.record.path / "raw" / path
+    if not f.exists():
+        return False, f"{path} absent from record/raw — no file was downlinked", [], False
     data = f.read_bytes()
     if len(data) < 4:
         return False, f"{path} shorter than a CRC ({len(data)} bytes)", [f"{path}:0-{len(data)}"]
+    crc_stored, crc_computed = struct.unpack(">I", data[:4])[0], zlib.crc32(data[4:]) & 0xFFFFFFFF
+    if crc_stored != crc_computed:
+        return False, f"CRC32 mismatch: stored 0x{crc_stored:08x}, computed 0x{crc_computed:08x}", [f"{path}:0-4"]
     off, found = 4, None
     while off + 9 <= len(data):
         if data[off] != 0xA5:
@@ -77,7 +82,7 @@ def prmdb_record_equals(ctx, path, id, value):
         off += 5 + size
     if found is None:
         return False, f"id 0x{id:08x} not in {path} ({off} bytes scanned)", [f"{path}:0-{len(data)}"]
-    return found == value, f"id 0x{id:08x} = {found} (expected {value})", [f"{path}:0-{len(data)}"]
+    return found == value, f"id 0x{id:08x} = {found} (expected {value}); CRC32 ok", [f"{path}:0-{len(data)}"]
 
 
 @planted_fault("bump_wrong_amount", applies_to=["L2-1", "L2-3"], cls="harness-expectation",
@@ -152,7 +157,7 @@ def negative_wrong_limit(test_id, command_name, args):
 
 
 @planted_fault("threshold_not_saved", applies_to=["L7-1"], cls="uut-state",
-      mechanism="the planned FileHandling.prmDb.PRM_SAVE_FILE is replaced by CdhCore.cmdDisp.CMD_NO_OP: the run starts in a fresh run/FprimeRustReference/ with no PrmDb.dat, so the file is never written, PrmFileSaveComplete is absent, SendFile fails with FileOpenError and completes EXECUTION_ERROR (one OpCodeError), no FileSent occurs, no record/raw/files/PrmDb.dat exists and prmdb_record_equals reports UNVERIFIED; this is the fault that disturbs the final-state artifact",
+      mechanism="the planned FileHandling.prmDb.PRM_SAVE_FILE is replaced by CdhCore.cmdDisp.CMD_NO_OP: the run starts in a fresh run/FprimeRustReference/ with no PrmDb.dat, so the file is never written, PrmFileSaveComplete is absent, SendFile fails with FileOpenError and completes EXECUTION_ERROR (one OpCodeError), no FileSent occurs, no record/raw/files/PrmDb.dat exists and prmdb_record_equals reports FAIL; this is the fault that disturbs the final-state artifact",
       fails={
         "L7-1": ["event FileHandling.prmDb.PrmFileSaveComplete(records=1) count == 1", "event FileHandling.fileDownlink.FileSent count == 1", "PrmDb.dat record 0x10016000 == 42", "event CdhCore.cmdDisp.OpCodeError count == 0"],
       }, kind="insert")
