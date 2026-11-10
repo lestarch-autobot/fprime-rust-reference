@@ -1,0 +1,10 @@
+register_fprime_module(
+    AUTOCODER_INPUTS
+        "${CMAKE_CURRENT_LIST_DIR}/Relay.fpp"
+    SOURCES
+        "${CMAKE_CURRENT_LIST_DIR}/Relay.cpp"
+    HEADERS
+        "${CMAKE_CURRENT_LIST_DIR}/Relay.hpp"
+    DEPENDS
+        FprimeRustReference_Ports
+)

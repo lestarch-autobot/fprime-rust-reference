@@ -1,0 +1,817 @@
+{
+  "name": "RUST-REF — fprime-rust on FprimeRustReference (native Linux x86_64, fprime-gds)",
+  "status": "L0: desk-checked; bench confirmation pending",
+  "request_and_goals": "\"Spin off a child session to fully implement the Rust component integration as seen in fprime-rust and fprime-rust-referenc on JPL-Devin above. You should pull those repos into lestarch-autobot, and get them running. You must use [Used playbook: F Prime Development Campaign — four lanes from request to run-for-record (!fprime_development_campaign)] to ensure the highest quality with those two pieces. Requirements and design are expected to match fprime-python and fprime-python-reference so I DO NOT NEED TOP APPROVE designs or requirements. Run through rfr with seed [withheld]. You must make sure that fprime-rust-reference contains multiple components written in rust and solve the issue where we get duplicate references because rust is baked into each component. All changes can go directly into main of the new autobot repos. Make sure to update to not use fpp-to-json and switch to the new model.\" \"Keep going and driving until we have a working rust implementation.\" Default goal: a functional Rust-component integration with respect to the description above, proven in system tests (native Linux host, fprime-gds ground system).",
+  "uut": {
+    "repo": "https://github.com/lestarch-autobot/fprime-rust",
+    "path": "lib/fprime-rust",
+    "branch": "main",
+    "sha": "frozen at DEVELOPMENT exit"
+  },
+  "deployment": {
+    "repo": "https://github.com/lestarch-autobot/fprime-rust-reference",
+    "name": "FprimeRustReference",
+    "executable": "FprimeRustReference",
+    "pins": {
+      "lib/fprime": "nasa/fprime devel b188d185ec46699b5fdc0a0666537896a5ea9d47",
+      "lib/fprime-rust": "https://github.com/lestarch-autobot/fprime-rust.git main"
+    }
+  },
+  "markers": {
+    "command": "CdhCore.cmdDisp.CMD_NO_OP_STRING",
+    "event": "CdhCore.cmdDisp.NoOpStringReceived",
+    "arg": "id"
+  },
+  "event_patterns": {
+    "CdhCore.cmdDisp.NoOpStringReceived": "Received a NO-OP string=(?P<id>\\d+)$",
+    "CdhCore.cmdDisp.OpCodeError": "Opcode 0x(?P<Opcode>[0-9A-Fa-f]+) completed with error (?P<error>\\w+)$",
+    "CdhCore.version.ProjectVersion": "Project Version: \\[(?P<version>[^\\]]*)\\]$",
+    "CdhCore.version.FrameworkVersion": "Framework Version: \\[(?P<version>[^\\]]*)\\]$",
+    "CdhCore.version.LibraryVersions": "Library Versions: \\[(?P<version>[^\\]]*)\\]$",
+    "rustCounter.Bumped": "RustCounter bumped to (?P<value>\\d+)$",
+    "rustCounter.Saturated": "RustCounter saturated at (?P<value>\\d+) \\(threshold (?P<threshold>\\d+)\\)$",
+    "rustMonitor.LimitSet": "RustMonitor limit set to (?P<limit>\\d+)$",
+    "rustMonitor.InvalidLimit": "RustMonitor rejected limit (?P<limit>\\d+)$",
+    "rustMonitor.LimitExceeded": "RustMonitor count (?P<count>\\d+) exceeds limit (?P<limit>\\d+)$"
+  },
+  "packets": {
+    "RustReference": [
+      "rustCounter.Counter",
+      "rustCounter.TickCount",
+      "rustMonitor.RunCount",
+      "rustMonitor.LastCount",
+      "rustMonitor.Exceedances",
+      "rustMonitor.Limit",
+      "relay.Relayed"
+    ]
+  },
+  "std_complete": [
+    "both markers present",
+    "commands_sent == count(event CdhCore.cmdDisp.OpCodeDispatched)",
+    "RustReference samples >= 2"
+  ],
+  "abs": {
+    "ABS": [
+      "event CdhCore.cmdDisp.MalformedCommand count == 0",
+      "event CdhCore.cmdDisp.InvalidCommand count == 0",
+      "event CdhCore.cmdDisp.TooManyCommands count == 0"
+    ]
+  },
+  "helpers_module": "planted_faults.py",
+  "requirements": {
+    "REQ-FprimeRust-001": {
+      "tests": [],
+      "verification": "Unit Test",
+      "note": "Unit Test",
+      "rationale": "the annotation is the only switch between a C++ and a Rust component, as in fprime-python"
+    },
+    "REQ-FprimeRust-002": {
+      "tests": [],
+      "verification": "Unit Test",
+      "note": "Unit Test",
+      "rationale": "Captain's ruling R5: in-process fpp.analyze, no JSON model"
+    },
+    "REQ-FprimeRust-003": {
+      "tests": [],
+      "verification": "Unit Test",
+      "note": "Unit Test",
+      "rationale": "R1/R5: the closure fpp-depend already computed is the authoritative import set"
+    },
+    "REQ-FprimeRust-004": {
+      "tests": [],
+      "verification": "Unit Test",
+      "note": "Unit Test",
+      "rationale": "a bad model must stop the build loudly, not generate partial code"
+    },
+    "REQ-FprimeRust-005": {
+      "tests": [],
+      "verification": "Unit Test",
+      "note": "Unit Test",
+      "rationale": "the shim keeps every F Prime base-class behavior (queue, dispatch, mutexes)"
+    },
+    "REQ-FprimeRust-006": {
+      "tests": [],
+      "verification": "Unit Test",
+      "note": "Unit Test",
+      "rationale": "typed trait + Context give the user the C++ handler names in Rust"
+    },
+    "REQ-FprimeRust-007": {
+      "tests": [],
+      "verification": "Unit Test",
+      "note": "Unit Test",
+      "rationale": "same .template ergonomics as fprime-python (no fprime-util impl)"
+    },
+    "REQ-FprimeRust-008": {
+      "tests": [
+        "L2-1",
+        "L2-4",
+        "L2-5"
+      ],
+      "verification": "Integration Test: L2-1, L2-4, L2-5",
+      "note": "Integration Test",
+      "rationale": "R1: same kind coverage as fprime-python"
+    },
+    "REQ-FprimeRust-009": {
+      "tests": [
+        "L2-3",
+        "L2-4"
+      ],
+      "verification": "Integration Test: L2-3, L2-4",
+      "note": "Integration Test",
+      "rationale": "R1: typed ports incl. Rust↔C++"
+    },
+    "REQ-FprimeRust-010": {
+      "tests": [
+        "L2-3",
+        "L7-1"
+      ],
+      "verification": "Integration Test: L2-3, L7-1",
+      "note": "Integration Test",
+      "rationale": "R1"
+    },
+    "REQ-FprimeRust-011": {
+      "tests": [
+        "L2-3",
+        "L2-4",
+        "L7-1"
+      ],
+      "verification": "Integration Test: L2-3, L2-4, L7-1",
+      "note": "Integration Test",
+      "rationale": "R4: at least one connection each direction"
+    },
+    "REQ-FprimeRust-012": {
+      "tests": [
+        "L2-1",
+        "L2-5",
+        "L6-1"
+      ],
+      "verification": "Integration Test: L2-1, L2-5, L6-1",
+      "note": "Integration Test",
+      "rationale": "R1"
+    },
+    "REQ-FprimeRust-013": {
+      "tests": [
+        "L2-1",
+        "L2-5",
+        "L5-1",
+        "L6-1"
+      ],
+      "verification": "Integration Test: L2-1, L2-5, L5-1, L6-1",
+      "note": "Integration Test",
+      "rationale": "R1"
+    },
+    "REQ-FprimeRust-014": {
+      "tests": [
+        "L2-1",
+        "L2-4",
+        "L4-1"
+      ],
+      "verification": "Integration Test: L2-1, L2-4, L4-1",
+      "note": "Integration Test",
+      "rationale": "R1"
+    },
+    "REQ-FprimeRust-015": {
+      "tests": [
+        "L2-2",
+        "L5-1"
+      ],
+      "verification": "Integration Test: L2-2, L5-1",
+      "note": "Integration Test",
+      "rationale": "R1"
+    },
+    "REQ-FprimeRust-016": {
+      "tests": [],
+      "verification": "Unit Test",
+      "note": "Unit Test",
+      "rationale": "the C ABI carries these directly; others need serialization"
+    },
+    "REQ-FprimeRust-017": {
+      "tests": [],
+      "verification": "Unit Test",
+      "note": "Unit Test",
+      "rationale": "fail loud at generation rather than at run time"
+    },
+    "REQ-FprimeRust-018": {
+      "tests": [],
+      "verification": "Unit Test",
+      "note": "Unit Test",
+      "rationale": "R4: one Rust runtime per deployment"
+    },
+    "REQ-FprimeRust-019": {
+      "tests": [],
+      "verification": "Unit Test",
+      "note": "Unit Test",
+      "rationale": "R4 mechanism: workspace members as rlibs, one staticlib root"
+    },
+    "REQ-FprimeRust-020": {
+      "tests": [],
+      "verification": "Inspection",
+      "note": "Inspection",
+      "rationale": "R1: same cmake integration shape"
+    },
+    "REQ-FprimeRust-021": {
+      "tests": [],
+      "verification": "Inspection",
+      "note": "Inspection",
+      "rationale": "R1: no .cpp/.hpp written by the user"
+    },
+    "REQ-FprimeRust-022": {
+      "tests": [],
+      "verification": "Unit Test",
+      "note": "Unit Test",
+      "rationale": "correct incremental builds when an imported FPP changes"
+    },
+    "REQ-FprimeRust-023": {
+      "tests": [],
+      "verification": "Unit Test",
+      "note": "Unit Test",
+      "rationale": "JPL design principle: thread safety across the FFI"
+    },
+    "REQ-FprimeRust-024": {
+      "tests": [],
+      "verification": "Unit Test",
+      "note": "Unit Test",
+      "rationale": "flight behavior on an unrecoverable error matches FW_ASSERT"
+    },
+    "REQ-FprimeRust-025": {
+      "tests": [],
+      "verification": "Unit Test",
+      "note": "Unit Test",
+      "rationale": "deterministic lifecycle, no allocation after init"
+    },
+    "REQ-FprimeRust-026": {
+      "tests": [],
+      "verification": "Unit Test",
+      "note": "Unit Test",
+      "rationale": "R1: F Prime names so C++ and Rust implementers read the same handler"
+    },
+    "REQ-FprimeRust-027": {
+      "tests": [],
+      "verification": "Unit Test",
+      "note": "Unit Test",
+      "rationale": "R1: cookiecutter/template"
+    },
+    "REQ-FprimeRust-028": {
+      "tests": [],
+      "verification": "Unit Test",
+      "note": "Unit Test",
+      "rationale": "reproducible builds; generated files are diffable"
+    },
+    "REQ-FprimeRust-029": {
+      "tests": [
+        "L2-1",
+        "L2-2",
+        "L4-1",
+        "L7-1"
+      ],
+      "verification": "Integration Test: L2-1, L2-2, L4-1, L7-1",
+      "note": "Integration Test",
+      "rationale": "the Captain's default goal: proven in system tests on the native host with fprime-gds"
+    }
+  },
+  "coverage": {
+    "ut": {
+      "lines_min": 95,
+      "branches_min": 85,
+      "scope": "fprime-rust Python autocoder (src/fprime_rust), runtime crate, generated C++ shim/runtime glue (FprimeRust/, generated Comp.cpp under GTest tester base)"
+    },
+    "system": {
+      "lines_min": 75,
+      "scope": "FprimeRustReference executable on the native host: instrumented twin build (-fprofile-arcs -ftest-coverage for C++, -C instrument-coverage for Rust) runs the same plan; judged on fprime-rust generated shim + FprimeRust/ + FprimeRustReference components"
+    },
+    "not_covered_ack": [
+      "L3 reset/persistence: the native bench defines no reset row (R7 names flash, dump, gds only); parameter persistence across a process restart is not exercised by the system run",
+      "REQ-FprimeRust-024 panic-abort path: death test in UT only; never planted in the system run (it would end the record)",
+      "REQ-FprimeRust-017 unsupported-element rejection: autocoder UT only; the reference deployment models only supported elements"
+    ],
+    "rationale": "UT baseline 95/85 from fprime-system-test-design; system 75 because the deployment's Svc/Drv framework code shares the executable and only the Rust integration surface is judged"
+  },
+  "image_version": {
+    "policy": "required",
+    "reason": "CdhCore.Subtopology instantiates Svc.Version; L0-1 compares ProjectVersion/LibraryVersions with the manifest describe strings"
+  },
+  "final_state": {
+    "accepted_evidence": "L7-1 bench dump",
+    "rationale": "R7: dump reads the installed executable back to {readback}; the auditor compares its sha256 with the manifest image, which is evidence outside the UUT's own reporting path; the in-band L7-1 window leaves Counter at 0"
+  },
+  "max_planted_faults": 2,
+  "levels": {
+    "L0": "provenance (image identity, markers)",
+    "L2": "functional (commands, events, telemetry, parameters, ports both directions, queued kind, rate groups)",
+    "L4": "endurance 60 s",
+    "L5": "fault path (saturation)",
+    "L6": "negative control (rejected command)",
+    "L7": "final state"
+  },
+  "not_covered": [
+    "L3 reset/persistence (no reset row on the native bench)"
+  ],
+  "decision_log": [
+    "1. Captain R1 (2026-11-09): Approve-SDD waived; design matches fprime-python (annotation, cmake shape, autocoder closure from fpp-cache/stdout.txt, .fpp+.rs ergonomics, cookiecutter, test/int).",
+    "2. Captain R4 (2026-11-09): ≥2 Rust components (RustCounter active, RustMonitor queued) + C++ Relay for Rust→C++ and C++→Rust ports; ONE Rust runtime per deployment via a deployment-level Cargo workspace (member rlibs, one staticlib root). Alternatives rejected in fprime-rust docs/sdd.md §Design.",
+    "3. Captain R5 (2026-11-09): no fpp-to-json / FPRIME_ENABLE_JSON_MODEL_GENERATION; fprime-fpp-python==4.0.1 + fprime-cpp-codegen==0.2.0; wheel platform constraint stated in the SDD. Spike on the campaign host: import + fpp.analyze clean with the fpp-depend closure.",
+    "4. Captain R7 (2026-11-09): native Linux x86_64 bench, fprime-gds, no hardware; bench.json flash/dump/gds/recorder/send as recorded; native executable (no suffix) is the manifest image; image_version required.",
+    "5. Captain (2026-11-09): pin lib/fprime to nasa/fprime devel b188d185ec46699b5fdc0a0666537896a5ea9d47 and lib/fprime-rust to lestarch-autobot/fprime-rust main; submodule edit is DEVELOPMENT work.",
+    "6. Author (2026-11-10): markers use CdhCore.cmdDisp.CMD_NO_OP_STRING / NoOpStringReceived so bracketing does not depend on the UUT's own command path; no helper component.",
+    "7. Author (2026-11-10): L3 not covered — the native bench has no reset row; acknowledged in coverage.not_covered_ack. Recommended ruling: accept, or add a reset row (kill + relaunch via gds) in DEVELOPMENT if persistence proof is wanted.",
+    "8. Author (2026-11-10): REQ-FprimeRust-018 (one archive) is verified by a build unit test (one libfprime_rust_<Deployment>.a on the link line, one copy of the Rust runtime symbols), not by a system test; L0-1 is an entry gate.",
+    "9. Author (2026-11-10): max planted faults per run = 2; menu holds 6 faults ≥ 2×2; every system-covered requirement has ≥2 covering tests with disjoint planted-fault sets."
+  ],
+  "tests": [
+    {
+      "id": "L0-1",
+      "title": "Image identity",
+      "purpose": "Confirms the running executable reports the project, framework and library versions recorded in the delivery manifest.",
+      "covers": [],
+      "covers_note": "— (entry gate; image_version policy required)",
+      "setup": "Image installed by flash, GDS attached, ≥ 2 s after start.",
+      "procedure": [
+        "MARK(10)",
+        "bracket (2 samples)",
+        "CdhCore.version.VERSION(ALL)",
+        "bracket",
+        "MARK(11)"
+      ],
+      "windows": [
+        {
+          "name": "W",
+          "start_id": 10,
+          "end_id": 11,
+          "reset": false
+        }
+      ],
+      "metrics": [
+        "event CdhCore.version.ProjectVersion count == 1",
+        "event CdhCore.version.FrameworkVersion count == 1",
+        "event CdhCore.cmdDisp.OpCodeError count == 0"
+      ],
+      "rationale": [
+        {
+          "pred": "event CdhCore.version.ProjectVersion count == 1",
+          "text": "the auditor compares the ProjectVersion / LibraryVersions payloads (40-char strings) with the manifest repos[].describe of fprime-rust-reference and fprime-rust"
+        }
+      ],
+      "knobs": [],
+      "evidence": "ProjectVersion, FrameworkVersion and LibraryVersions events whose payloads equal the manifest describe strings."
+    },
+    {
+      "id": "L0-2",
+      "title": "Marker round-trip",
+      "purpose": "Proves the marker command round-trips through the command path so every later window can be bracketed.",
+      "covers": [],
+      "covers_note": "— (entry gate; harness completeness)",
+      "setup": "As L0-1.",
+      "procedure": [
+        "MARK(20)",
+        "bracket (2 samples)",
+        "MARK(42)",
+        "bracket",
+        "MARK(21)"
+      ],
+      "windows": [
+        {
+          "name": "W",
+          "start_id": 20,
+          "end_id": 21,
+          "reset": false
+        }
+      ],
+      "metrics": [
+        "event CdhCore.cmdDisp.NoOpStringReceived count == 3",
+        "event CdhCore.cmdDisp.OpCodeError count == 0"
+      ],
+      "rationale": [],
+      "knobs": [],
+      "evidence": "Three NoOpStringReceived events in order (20, 42, 21)."
+    },
+    {
+      "id": "L2-1",
+      "title": "Rust command, event and telemetry paths",
+      "purpose": "Resets and bumps the Rust active component to prove commands dispatch into Rust and events and telemetry come back out.",
+      "covers": [
+        "REQ-FprimeRust-008",
+        "REQ-FprimeRust-012",
+        "REQ-FprimeRust-013",
+        "REQ-FprimeRust-014",
+        "REQ-FprimeRust-029"
+      ],
+      "covers_note": "",
+      "setup": "L0-2 passed; THRESHOLD at default 100.",
+      "procedure": [
+        "MARK(30)",
+        "bracket (2 samples)",
+        "rustCounter.RESET()",
+        "rustCounter.BUMP(7)",
+        "rustCounter.BUMP(5)",
+        "bracket (2 samples)",
+        "MARK(31)"
+      ],
+      "windows": [
+        {
+          "name": "W",
+          "start_id": 30,
+          "end_id": 31,
+          "reset": false
+        }
+      ],
+      "metrics": [
+        "event rustCounter.ResetIssued count == 1",
+        "event rustCounter.Bumped(value=7) count == 1",
+        "event rustCounter.Bumped(value=12) count == 1",
+        "event rustCounter.ResetIssued precedes event rustCounter.Bumped(value=7)",
+        "last(rustCounter.Counter) == 12",
+        "event rustCounter.Saturated count == 0",
+        "event CdhCore.cmdDisp.OpCodeError count == 0"
+      ],
+      "rationale": [],
+      "knobs": [
+        "bump_wrong_amount",
+        "skip_reset"
+      ],
+      "evidence": "ResetIssued, Bumped(7), Bumped(12); Counter 12; no Saturated; no command error."
+    },
+    {
+      "id": "L2-2",
+      "title": "Parameter read from Rust",
+      "purpose": "Sets THRESHOLD to 5 and bumps past it to prove the Rust handler reads the parameter and saturates on it.",
+      "covers": [
+        "REQ-FprimeRust-015",
+        "REQ-FprimeRust-029"
+      ],
+      "covers_note": "",
+      "setup": "L2-1 passed.",
+      "procedure": [
+        "MARK(40)",
+        "bracket (2 samples)",
+        "rustCounter.RESET()",
+        "rustCounter.THRESHOLD_PRM_SET(5)",
+        "rustCounter.BUMP(9)",
+        "rustCounter.THRESHOLD_PRM_SET(100)",
+        "bracket (2 samples)",
+        "MARK(41)"
+      ],
+      "windows": [
+        {
+          "name": "W",
+          "start_id": 40,
+          "end_id": 41,
+          "reset": false
+        }
+      ],
+      "metrics": [
+        "event rustCounter.Saturated(value=5, threshold=5) count == 1",
+        "last(rustCounter.Counter) == 5",
+        "event rustCounter.Bumped count == 0",
+        "event CdhCore.cmdDisp.OpCodeError count == 0"
+      ],
+      "rationale": [
+        {
+          "pred": "event rustCounter.Saturated(value=5, threshold=5) count == 1",
+          "text": "THRESHOLD is re-read on every BUMP, so the set value takes effect without a restart"
+        }
+      ],
+      "knobs": [
+        "threshold_not_set"
+      ],
+      "evidence": "Saturated(5, 5); Counter 5; no Bumped."
+    },
+    {
+      "id": "L2-3",
+      "title": "Rust to C++ to Rust port chain",
+      "purpose": "Bumps the Rust counter and follows the count through the C++ relay into the Rust monitor to prove typed ports in both directions.",
+      "covers": [
+        "REQ-FprimeRust-009",
+        "REQ-FprimeRust-010",
+        "REQ-FprimeRust-011"
+      ],
+      "covers_note": "",
+      "setup": "L2-1 passed; rustMonitor limit at initial U32::MAX.",
+      "procedure": [
+        "MARK(50)",
+        "bracket (2 samples)",
+        "rustCounter.RESET()",
+        "rustCounter.BUMP(3)",
+        "bracket (2 samples)",
+        "MARK(51)"
+      ],
+      "windows": [
+        {
+          "name": "W",
+          "start_id": 50,
+          "end_id": 51,
+          "reset": false
+        }
+      ],
+      "metrics": [
+        "event rustCounter.Bumped(value=3) count == 1",
+        "delta(relay.Relayed) == 2",
+        "last(rustMonitor.LastCount) == 3",
+        "event rustMonitor.LimitExceeded count == 0",
+        "event CdhCore.cmdDisp.OpCodeError count == 0"
+      ],
+      "rationale": [
+        {
+          "pred": "delta(relay.Relayed) == 2",
+          "text": "RESET and BUMP each send countOut once: Rust→C++ counted by the C++ relay, C++→Rust seen as LastCount"
+        }
+      ],
+      "knobs": [
+        "bump_wrong_amount"
+      ],
+      "evidence": "Bumped(3); Relayed +2; LastCount 3."
+    },
+    {
+      "id": "L2-4",
+      "title": "Rate-group ports into Rust",
+      "purpose": "Lets the 1 Hz rate group tick the active Rust component and run the queued Rust component to prove C++ scheduler ports into Rust handlers.",
+      "covers": [
+        "REQ-FprimeRust-008",
+        "REQ-FprimeRust-009",
+        "REQ-FprimeRust-011",
+        "REQ-FprimeRust-014"
+      ],
+      "covers_note": "",
+      "setup": "L0-2 passed.",
+      "procedure": [
+        "MARK(60)",
+        "bracket (2 samples)",
+        "wait 5 s",
+        "bracket (2 samples)",
+        "MARK(61)"
+      ],
+      "windows": [
+        {
+          "name": "W",
+          "start_id": 60,
+          "end_id": 61,
+          "reset": false
+        }
+      ],
+      "metrics": [
+        "event CdhCore.cmdDisp.OpCodeError count == 0",
+        {
+          "helper": "delta_in_range",
+          "text": "delta(rustCounter.TickCount) in 4..8",
+          "args": {
+            "channel": "rustCounter.TickCount",
+            "lo": 4,
+            "hi": 8
+          }
+        },
+        {
+          "helper": "delta_in_range",
+          "text": "delta(rustMonitor.RunCount) in 4..8",
+          "args": {
+            "channel": "rustMonitor.RunCount",
+            "lo": 4,
+            "hi": 8
+          }
+        }
+      ],
+      "rationale": [
+        {
+          "pred": "delta(rustCounter.TickCount) in 4..8",
+          "text": "rate group 1 runs at 1 Hz; 5 s window plus bracket sampling admits 4..8 ticks"
+        }
+      ],
+      "knobs": [],
+      "evidence": "TickCount and RunCount each advance 4..8 over the window."
+    },
+    {
+      "id": "L2-5",
+      "title": "Queued Rust command and limit exceedance",
+      "purpose": "Sets the monitor limit then bumps past it to prove a queued Rust component handles commands and raises a warning event from a relayed count.",
+      "covers": [
+        "REQ-FprimeRust-008",
+        "REQ-FprimeRust-012",
+        "REQ-FprimeRust-013"
+      ],
+      "covers_note": "",
+      "setup": "L2-3 passed.",
+      "procedure": [
+        "MARK(70)",
+        "bracket (2 samples)",
+        "rustMonitor.SET_LIMIT(4)",
+        "rustCounter.RESET()",
+        "rustCounter.BUMP(10)",
+        "wait 2 s",
+        "rustMonitor.SET_LIMIT(4294967295)",
+        "bracket (2 samples)",
+        "MARK(71)"
+      ],
+      "windows": [
+        {
+          "name": "W",
+          "start_id": 70,
+          "end_id": 71,
+          "reset": false
+        }
+      ],
+      "metrics": [
+        "event rustMonitor.LimitSet(limit=4) count == 1",
+        "event rustMonitor.LimitExceeded(count=10, limit=4) count == 1",
+        "delta(rustMonitor.Exceedances) == 1",
+        "event rustMonitor.LimitSet count == 2",
+        "last(rustMonitor.Limit) == 4294967295",
+        "event CdhCore.cmdDisp.OpCodeError count == 0"
+      ],
+      "rationale": [
+        {
+          "pred": "event rustMonitor.LimitExceeded(count=10, limit=4) count == 1",
+          "text": "the count 10 reaches the queued component on the next run, within the 2 s wait"
+        }
+      ],
+      "knobs": [
+        "limit_not_set"
+      ],
+      "evidence": "LimitSet(4), LimitExceeded(10, 4), Exceedances +1, limit restored."
+    },
+    {
+      "id": "L4-1",
+      "title": "Endurance 60 s",
+      "purpose": "Runs the deployment for 60 s to prove the Rust components keep servicing rate-group ports with no command errors or counter drift.",
+      "covers": [
+        "REQ-FprimeRust-014",
+        "REQ-FprimeRust-029"
+      ],
+      "covers_note": "",
+      "setup": "L2-4 passed.",
+      "procedure": [
+        "MARK(80)",
+        "bracket (2 samples)",
+        "wait 60 s",
+        "bracket (2 samples)",
+        "MARK(81)"
+      ],
+      "windows": [
+        {
+          "name": "W",
+          "start_id": 80,
+          "end_id": 81,
+          "reset": false
+        }
+      ],
+      "metrics": [
+        "delta(rustCounter.Counter) == 0",
+        "event rustCounter.Saturated count == 0",
+        "event CdhCore.cmdDisp.OpCodeError count == 0",
+        {
+          "helper": "delta_in_range",
+          "text": "delta(rustCounter.TickCount) in 55..4294967295",
+          "args": {
+            "channel": "rustCounter.TickCount",
+            "lo": 55,
+            "hi": 4294967295
+          }
+        },
+        {
+          "helper": "delta_in_range",
+          "text": "delta(rustMonitor.RunCount) in 55..4294967295",
+          "args": {
+            "channel": "rustMonitor.RunCount",
+            "lo": 55,
+            "hi": 4294967295
+          }
+        }
+      ],
+      "rationale": [
+        {
+          "pred": "delta(rustCounter.TickCount) in 55..4294967295",
+          "text": "1 Hz over 60 s with scheduler jitter margin"
+        }
+      ],
+      "knobs": [],
+      "evidence": "≥ 55 ticks and runs; Counter unchanged."
+    },
+    {
+      "id": "L5-1",
+      "title": "Saturation fault path",
+      "purpose": "Drives the counter into THRESHOLD saturation to prove the Rust warning event and the clamp.",
+      "covers": [
+        "REQ-FprimeRust-013",
+        "REQ-FprimeRust-015"
+      ],
+      "covers_note": "",
+      "setup": "L2-2 passed.",
+      "procedure": [
+        "MARK(90)",
+        "bracket (2 samples)",
+        "rustCounter.RESET()",
+        "rustCounter.THRESHOLD_PRM_SET(3)",
+        "rustCounter.BUMP(2)",
+        "rustCounter.BUMP(2)",
+        "rustCounter.THRESHOLD_PRM_SET(100)",
+        "bracket (2 samples)",
+        "MARK(91)"
+      ],
+      "windows": [
+        {
+          "name": "W",
+          "start_id": 90,
+          "end_id": 91,
+          "reset": false
+        }
+      ],
+      "metrics": [
+        "event rustCounter.Bumped(value=2) count == 1",
+        "event rustCounter.Saturated(value=3, threshold=3) count == 1",
+        "last(rustCounter.Counter) == 3",
+        "event rustCounter.Bumped(value=2) precedes event rustCounter.Saturated(value=3, threshold=3)",
+        "event CdhCore.cmdDisp.OpCodeError count == 0"
+      ],
+      "rationale": [],
+      "knobs": [
+        "bump_zero"
+      ],
+      "evidence": "Bumped(2) then Saturated(3, 3); Counter 3."
+    },
+    {
+      "id": "L6-1",
+      "title": "Negative control: SET_LIMIT(0) rejected",
+      "purpose": "Sends an invalid limit to prove the Rust handler rejects it with a validation error and changes nothing else.",
+      "covers": [
+        "REQ-FprimeRust-012",
+        "REQ-FprimeRust-013"
+      ],
+      "covers_note": "",
+      "setup": "L2-5 passed; limit at U32::MAX.",
+      "procedure": [
+        "MARK(100)",
+        "bracket (2 samples)",
+        "rustMonitor.SET_LIMIT(0)",
+        "bracket (2 samples)",
+        "MARK(101)"
+      ],
+      "windows": [
+        {
+          "name": "W",
+          "start_id": 100,
+          "end_id": 101,
+          "reset": false
+        }
+      ],
+      "metrics": [
+        "event rustMonitor.InvalidLimit(limit=0) count == 1",
+        "event CdhCore.cmdDisp.OpCodeError(error=VALIDATION_ERROR) count == 1",
+        "event rustMonitor.LimitSet count == 0",
+        "delta(rustMonitor.Limit) == 0",
+        "delta(rustMonitor.Exceedances) == 0",
+        "event rustCounter.Bumped count == 0"
+      ],
+      "rationale": [
+        {
+          "pred": "event CdhCore.cmdDisp.OpCodeError(error=VALIDATION_ERROR) count == 1",
+          "text": "negative control: the rejection is visible at the dispatcher and nothing else happened"
+        }
+      ],
+      "knobs": [
+        "negative_wrong_limit"
+      ],
+      "evidence": "InvalidLimit(0), one OpCodeError(VALIDATION_ERROR), Limit and Exceedances unchanged."
+    },
+    {
+      "id": "L7-1",
+      "title": "Final state",
+      "purpose": "Resets the counter and reads the installed executable back out of band to leave the deployment in an independently verifiable state.",
+      "covers": [
+        "REQ-FprimeRust-010",
+        "REQ-FprimeRust-011",
+        "REQ-FprimeRust-029"
+      ],
+      "covers_note": "",
+      "setup": "All earlier tests run.",
+      "procedure": [
+        "MARK(110)",
+        "bracket (2 samples)",
+        "rustCounter.RESET()",
+        "bracket (2 samples)",
+        "MARK(111)",
+        "action: bench dump reads the installed executable back to {readback}"
+      ],
+      "windows": [
+        {
+          "name": "W",
+          "start_id": 110,
+          "end_id": 111,
+          "reset": false
+        }
+      ],
+      "metrics": [
+        "event rustCounter.ResetIssued count == 1",
+        "last(rustCounter.Counter) == 0",
+        "delta(relay.Relayed) == 1",
+        "event CdhCore.cmdDisp.OpCodeError count == 0"
+      ],
+      "rationale": [
+        {
+          "pred": "delta(relay.Relayed) == 1",
+          "text": "the reset count 0 travels Rust→C++→Rust one more time"
+        }
+      ],
+      "knobs": [
+        "skip_reset"
+      ],
+      "evidence": "ResetIssued; Counter 0; Relayed +1; readback sha256 equals the manifest image."
+    }
+  ]
+}

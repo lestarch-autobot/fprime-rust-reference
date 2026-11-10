@@ -35,7 +35,9 @@ module FprimeRustReference {
     instance comDriver
 
     # The Rust-backed reference component, declared in instances.fpp.
-    instance rustExample
+    instance rustCounter
+    instance rustMonitor
+    instance relay
 
     # ----------------------------------------------------------------------
     # Pattern graph specifiers
@@ -79,6 +81,8 @@ module FprimeRustReference {
       rateGroup1Comp.RateGroupMemberOut[3] -> ComCcsds.Subtopology.comQueueRun
       rateGroup1Comp.RateGroupMemberOut[4] -> CdhCore.Subtopology.cmdDispRun
       rateGroup1Comp.RateGroupMemberOut[5] -> ComCcsds.Subtopology.aggregatorTimeout
+      rateGroup1Comp.RateGroupMemberOut[6] -> rustCounter.tick
+      rateGroup1Comp.RateGroupMemberOut[7] -> rustMonitor.run
 
       # Rate group 2 (1 Hz):  bookkeeping for file management.
       rateGroupDriverComp.CycleOut[Ports_RateGroups.rateGroup2] -> rateGroup2Comp.CycleIn
@@ -135,4 +139,10 @@ module FprimeRustReference {
 
   }
 
+
+
+    connections RustReference {
+      rustCounter.countOut -> relay.countIn
+      relay.countOut       -> rustMonitor.countIn
+    }
 }

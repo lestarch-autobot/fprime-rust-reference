@@ -1,0 +1,27 @@
+{
+  "deployment": "FprimeRustReference",
+  "dictionary": "uut/build-artifacts/Linux/FprimeRustReference/dict/FprimeRustReferenceTopologyDictionary.json",
+  "serial": "native-<hostname>",
+  "vars": {
+    "install": "/tmp/fth-rust-ref/FprimeRustReference",
+    "zmq": "ipc:///tmp/fprime-server-in ipc:///tmp/fprime-server-out"
+  },
+  "flash": "python3 bench/native_flash.py --image {image} --install {install}",
+  "dump": "python3 bench/native_dump.py --install {install} --readback {readback}",
+  "gds": "fprime-gds -n --dictionary {dictionary} --app {install} --gui none --zmq-transport {zmq} --logs {logs}",
+  "recorder": "fprime-cli events --dictionary {dictionary} --zmq-transport {zmq} --logs {logs}",
+  "send": "fprime-cli command-send --dictionary {dictionary} --zmq-transport {zmq} --logs {logs} {command} --arguments {args}",
+  "timeouts": {
+    "flash_s": 60,
+    "gds_start_s": 15,
+    "recorder_start_s": 3,
+    "send_s": 60,
+    "command_s": 30,
+    "reset_settle_s": 5
+  },
+  "provenance": {
+    "serial_re": "Serial# = (\\S+)",
+    "note": "R7: native_flash.py copies the delivered executable (no suffix) to {install}, chmod +x, and prints 'Serial# = native-<hostname>'; native_dump.py copies {install} back to {readback}. Both scripts are pinned in the input package (bench/), written in DEVELOPMENT."
+  },
+  "notes": "Native Linux x86_64 host, no hardware. Relative paths only: run from the campaign root. fprime-gds launches the executable itself (--app) and the deployment's Drv.TcpClient connects to the GDS server on 127.0.0.1:50000. No reset row: the plan acknowledges L3 as not covered."
+}

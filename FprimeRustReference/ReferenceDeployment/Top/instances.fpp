@@ -13,7 +13,7 @@ module FprimeRustReference {
   #   xxx = Reserved for internal component items (events, commands, telemetry)
   #
   # The reference deployment intentionally keeps a tiny set of instances --
-  # just what is required to drive ``rustExample`` from fprime-gds and watch
+  # just what is required to drive ``rustCounter``, ``rustMonitor`` and ``relay`` from fprime-gds and watch
   # its commands, events, and telemetry round-trip.  Real deployments will
   # add their own instances alongside the ones below.
 
@@ -45,14 +45,21 @@ module FprimeRustReference {
     stack size Default.STACK_SIZE \
     priority 41
 
-  # The Rust-backed reference component instance.  Its handlers live in
-  # ``FprimeRustReference/Components/RustExample/RustExample.rs`` and the C++
+  # The Rust-backed reference component instances.  RustCounter handlers live in
+  # ``FprimeRustReference/Components/RustCounter/RustCounter.rs`` and the C++
   # shim is generated at build time by the ``fprime-rust`` autocoder.
 
-  instance rustExample: FprimeRustReference.RustExample base id 0x10016000 \
+  instance rustCounter: FprimeRustReference.RustCounter base id 0x10016000 \
     queue size Default.QUEUE_SIZE \
     stack size Default.STACK_SIZE \
     priority 18
+
+  # ----------------------------------------------------------------------
+  # Queued component instances
+  # ----------------------------------------------------------------------
+
+  instance rustMonitor: FprimeRustReference.RustMonitor base id 0x10017000 \
+    queue size Default.QUEUE_SIZE
 
   # ----------------------------------------------------------------------
   # Passive component instances
@@ -67,5 +74,6 @@ module FprimeRustReference {
   instance linuxTimer: Svc.LinuxTimer base id 0x10024000
 
   instance comDriver: Drv.TcpClient base id 0x10025000
+  instance relay: FprimeRustReference.Relay base id 0x10026000
 
 }

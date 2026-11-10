@@ -1,7 +1,7 @@
 #####
 # 'ReferenceDeployment' Deployment:
 #
-# Registers the executable that wires the Rust-backed RustExample
+# Registers the executable that wires the Rust-backed RustCounter and RustMonitor and the C++ Relay
 # component into a complete F Prime topology.
 #####
 

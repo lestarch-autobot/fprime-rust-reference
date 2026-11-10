@@ -15,5 +15,7 @@ register_fprime_module(
     Fw_Logger
     Svc_PosixTime
     Svc_TlmPacketizer_config_TlmPacketizerConfig
-    FprimeRustReference_Components_RustExample
+    FprimeRustReference_Components_RustCounter
+    FprimeRustReference_Components_RustMonitor
+    FprimeRustReference_Components_Relay
 )
