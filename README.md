@@ -2,7 +2,7 @@
 
 Reference deployment that demonstrates the
 [`fprime-rust`](https://github.com/lestarch-autobot/fprime-rust) autocoder by
-hosting two Rust components (`RustCounter`, a passive counter with RESET/BUMP commands and a
+hosting two Rust components (`RustCounter`, an active counter with RESET/BUMP commands and a
 `THRESHOLD` parameter; `RustMonitor`, a queued limit monitor with SET_LIMIT) and a C++ `Relay`
 between them inside a standard F Prime topology.  The structure mirrors
 [`fprime-python-reference`](https://github.com/fprime-community/fprime-python-reference):
@@ -16,7 +16,7 @@ fprime-rust-reference/
 │   └── fprime-rust/            # submodule  -> github.com/lestarch-autobot/fprime-rust
 ├── FprimeRustReference/
 │   ├── Components/             # project-specific components
-│   │   ├── RustCounter/        # passive Rust component (RustCounter.rs)
+│   │   ├── RustCounter/        # active Rust component  (RustCounter.rs)
 │   │   ├── RustMonitor/        # queued Rust component (RustMonitor.rs)
 │   │   └── Relay/              # C++ component forwarding counts to the monitor
 │   └── ReferenceDeployment/    # topology + Main.cpp
@@ -62,7 +62,7 @@ FprimeRustReference/Components/RustCounter/
 ```
 
 Each build regenerates the C++ shim, the Rust base module (`rustcounter_base.rs`) and a
-`RustCounter.template.rs` next to the user file; all Rust components of the deployment are
+`RustCounter.template.rs` in the module build directory; all Rust components of the deployment are
 linked from one `libfprime_rust_<Deployment>.a`. See the
 [`fprime-rust` README](https://github.com/lestarch-autobot/fprime-rust) for the full design.
 

@@ -38,15 +38,13 @@ impl Component for RustCounter {
 
     fn BUMP_cmd_handler(&mut self, ctx: &mut Context<'_>, amount: u32) -> CmdResponse {
         let (threshold, _valid) = ctx.paramGet_THRESHOLD();
-        match self.counter.checked_add(amount) {
-            Some(value) if value <= threshold => {
-                self.counter = value;
-                ctx.log_ACTIVITY_LO_Bumped(self.counter);
-            }
-            _ => {
-                self.counter = threshold;
-                ctx.log_WARNING_LO_Saturated(self.counter, threshold);
-            }
+        let sum = self.counter.saturating_add(amount);
+        if sum > threshold {
+            self.counter = threshold;
+            ctx.log_WARNING_LO_Saturated(self.counter, threshold);
+        } else {
+            self.counter = sum;
+            ctx.log_ACTIVITY_LO_Bumped(self.counter);
         }
         self.report(ctx);
         CmdResponse::Ok
