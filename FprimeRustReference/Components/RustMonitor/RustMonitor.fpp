@@ -13,7 +13,7 @@ module FprimeRustReference {
     sync input port run: Svc.Sched
 
     @ Count relayed from the C++ Relay component
-    async input port countIn: FprimeRustReference.Count
+    async input port countIn: FprimeRustReference.Count drop
 
     # ----------------------------------------------------------------------
     # Special ports

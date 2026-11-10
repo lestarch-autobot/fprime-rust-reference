@@ -12,7 +12,7 @@ module FprimeRustReference {
 
 
 
-  topology FprimeRustReference {
+  deployment topology FprimeRustReference {
     # ----------------------------------------------------------------------
     # Subtopology instances
     # ----------------------------------------------------------------------
@@ -72,7 +72,7 @@ module FprimeRustReference {
       # Linux timer to drive cycle
       linuxTimer.CycleOut -> rateGroupDriverComp.CycleIn
 
-      # Rate group 1 (10 Hz):  drives the CCSDS plumbing required to push
+      # Rate group 1 (1 Hz):  drives the CCSDS plumbing required to push
       # telemetry, events, and command responses back to fprime-gds.
       rateGroupDriverComp.CycleOut[Ports_RateGroups.rateGroup1] -> rateGroup1Comp.CycleIn
       rateGroup1Comp.RateGroupMemberOut[0] -> CdhCore.Subtopology.tlmSendRun
@@ -84,11 +84,11 @@ module FprimeRustReference {
       rateGroup1Comp.RateGroupMemberOut[6] -> rustCounter.tick
       rateGroup1Comp.RateGroupMemberOut[7] -> rustMonitor.run
 
-      # Rate group 2 (1 Hz):  bookkeeping for file management.
+      # Rate group 2 (0.5 Hz):  bookkeeping for file management.
       rateGroupDriverComp.CycleOut[Ports_RateGroups.rateGroup2] -> rateGroup2Comp.CycleIn
       rateGroup2Comp.RateGroupMemberOut[0] -> FileHandling.Subtopology.fileManagerSchedIn
 
-      # Rate group 3 (0.1 Hz): health checking + buffer-pool / data-product
+      # Rate group 3 (0.25 Hz): health checking + buffer-pool / data-product
       # housekeeping.
       rateGroupDriverComp.CycleOut[Ports_RateGroups.rateGroup3] -> rateGroup3Comp.CycleIn
       rateGroup3Comp.RateGroupMemberOut[0] -> CdhCore.Subtopology.healthRun
@@ -137,12 +137,12 @@ module FprimeRustReference {
       FileHandling.Subtopology.fileDownlinkFileComplete  -> DataProducts.Subtopology.dpCatFileDone
     }
 
-  }
-
-
-
     connections RustReference {
       rustCounter.countOut -> relay.countIn
       relay.countOut       -> rustMonitor.countIn
     }
+
+  }
+
+
 }

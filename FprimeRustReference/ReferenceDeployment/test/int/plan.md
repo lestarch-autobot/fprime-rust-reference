@@ -24,13 +24,13 @@ Packets (named channel sets for `<packet> samples >= n`): RustReference = rustCo
 
 ID:        L0-1
 Title:     Image identity
-Purpose:   Confirms the running executable reports the project, framework and library versions recorded in the delivery manifest.
-Covers:    — (entry gate; image_version policy required)
+Purpose:   Confirms the running executable reports non-empty project, framework and library version strings for the delivery manifest check.
+Covers:    — (entry gate; image_version policy required: fth deliver/audit compare these payloads and the dictionary metadata with manifest repos[].describe)
 Setup:     Image installed by flash, GDS attached, ≥ 2 s after start.
 Procedure: MARK(10); bracket (2 samples); CdhCore.version.VERSION(ALL); bracket; MARK(11).
 Window:    Marker(id=10) … Marker(id=11)
-Pass rule: named checks declared in the integration test (test_L0_1). metrics: event CdhCore.version.ProjectVersion count == 1 (the auditor compares the ProjectVersion / LibraryVersions payloads (40-char strings) with the manifest repos[].describe of fprime-rust-reference and fprime-rust); event CdhCore.version.FrameworkVersion count == 1; event CdhCore.cmdDisp.OpCodeError count == 0.
-Evidence:  ProjectVersion, FrameworkVersion and LibraryVersions events whose payloads equal the manifest describe strings.
+Pass rule: named checks declared in the integration test (test_L0_1). metrics: event CdhCore.version.ProjectVersion count == 1; event CdhCore.version.FrameworkVersion count == 1; event CdhCore.version.LibraryVersions count == 1 (one library (lib/fprime-rust) is registered in settings.ini library_locations, so Svc.Version emits one LibraryVersions event; fth v0.1.2 has no manifest-substituted predicate, so equality with manifest repos[].describe is the deliver/audit dictionary-describe check (fth audit.dictionary_describe_check), recorded here as the image_version policy); version payloads of ProjectVersion, FrameworkVersion, LibraryVersions are non-empty and not UNKNOWN; event CdhCore.cmdDisp.OpCodeError count == 0.
+Evidence:  ProjectVersion, FrameworkVersion and LibraryVersions events with non-empty payloads; describe equality judged at deliver/unseal.
 Planted faults:none
 
 ID:        L0-2
@@ -46,8 +46,8 @@ Planted faults:none
 
 ID:        L2-1
 Title:     Rust command, event and telemetry paths
-Purpose:   Resets and bumps the Rust active component to prove commands dispatch into Rust and events and telemetry come back out.
-Covers:    REQ-FprimeRust-008, REQ-FprimeRust-012, REQ-FprimeRust-013, REQ-FprimeRust-014, REQ-FprimeRust-029
+Purpose:   Resets and bumps the Rust active component to prove async commands dispatch into Rust and events and telemetry come back out.
+Covers:    REQ-FprimeRust-008, REQ-FprimeRust-012, REQ-FprimeRust-013, REQ-FprimeRust-014, REQ-RustCounter-001, REQ-RustCounter-002, REQ-RustCounter-004
 Setup:     L0-2 passed; THRESHOLD at default 100.
 Procedure: MARK(30); bracket (2 samples); rustCounter.RESET(); rustCounter.BUMP(7); rustCounter.BUMP(5); bracket (2 samples); MARK(31).
 Window:    Marker(id=30) … Marker(id=31)
@@ -58,62 +58,62 @@ Planted faults:bump_wrong_amount, skip_reset
 ID:        L2-2
 Title:     Parameter read from Rust
 Purpose:   Sets THRESHOLD to 5 and bumps past it to prove the Rust handler reads the parameter and saturates on it.
-Covers:    REQ-FprimeRust-015, REQ-FprimeRust-029
-Setup:     L2-1 passed.
+Covers:    REQ-FprimeRust-015, REQ-RustCounter-003, REQ-RustCounter-006
+Setup:     L2-1 passed (opens with RESET, so L2-1's planted faults do not ripple here).
 Procedure: MARK(40); bracket (2 samples); rustCounter.RESET(); rustCounter.THRESHOLD_PRM_SET(5); rustCounter.BUMP(9); rustCounter.THRESHOLD_PRM_SET(100); bracket (2 samples); MARK(41).
 Window:    Marker(id=40) … Marker(id=41)
-Pass rule: named checks declared in the integration test (test_L2_2). metrics: event rustCounter.Saturated(value=5, threshold=5) count == 1 (THRESHOLD is re-read on every BUMP, so the set value takes effect without a restart); last(rustCounter.Counter) == 5; event rustCounter.Bumped count == 0; event CdhCore.cmdDisp.OpCodeError count == 0.
+Pass rule: named checks declared in the integration test (test_L2_2). metrics: event rustCounter.Saturated(value=5, threshold=5) count == 1 (THRESHOLD is read on every BUMP (RustCounter §Behavior), so the set value takes effect without a restart); last(rustCounter.Counter) == 5; event rustCounter.Bumped count == 0; event CdhCore.cmdDisp.OpCodeError count == 0.
 Evidence:  Saturated(5, 5); Counter 5; no Bumped.
 Planted faults:threshold_not_set
 
 ID:        L2-3
 Title:     Rust to C++ to Rust port chain
 Purpose:   Bumps the Rust counter and follows the count through the C++ relay into the Rust monitor to prove typed ports in both directions.
-Covers:    REQ-FprimeRust-009, REQ-FprimeRust-010, REQ-FprimeRust-011
-Setup:     L2-1 passed; rustMonitor limit at initial U32::MAX.
-Procedure: MARK(50); bracket (2 samples); rustCounter.RESET(); rustCounter.BUMP(3); bracket (2 samples); MARK(51).
+Covers:    REQ-FprimeRust-009, REQ-FprimeRust-010, REQ-FprimeRust-011, REQ-RustCounter-002, REQ-RustCounter-004, REQ-RustMonitor-003, REQ-Relay-001, REQ-Relay-002
+Setup:     L2-1 passed; rustMonitor limit at initial 4294967295.
+Procedure: MARK(50); bracket (2 samples); rustCounter.RESET(); rustCounter.BUMP(3); wait 2 s; bracket (2 samples); MARK(51).
 Window:    Marker(id=50) … Marker(id=51)
-Pass rule: named checks declared in the integration test (test_L2_3). metrics: event rustCounter.Bumped(value=3) count == 1; delta(relay.Relayed) == 2 (RESET and BUMP each send countOut once: Rust→C++ counted by the C++ relay, C++→Rust seen as LastCount); last(rustMonitor.LastCount) == 3; event rustMonitor.LimitExceeded count == 0; event CdhCore.cmdDisp.OpCodeError count == 0.
+Pass rule: named checks declared in the integration test (test_L2_3). metrics: event rustCounter.Bumped(value=3) count == 1; delta(relay.Relayed) == 2 (RESET and BUMP each send countOut once: Rust→C++ counted by the C++ relay, C++→Rust seen as LastCount after the next 1 Hz run); last(rustMonitor.LastCount) == 3; event rustMonitor.LimitExceeded count == 0; event CdhCore.cmdDisp.OpCodeError count == 0.
 Evidence:  Bumped(3); Relayed +2; LastCount 3.
 Planted faults:bump_wrong_amount
 
 ID:        L2-4
 Title:     Rate-group ports into Rust
 Purpose:   Lets the 1 Hz rate group tick the active Rust component and run the queued Rust component to prove C++ scheduler ports into Rust handlers.
-Covers:    REQ-FprimeRust-008, REQ-FprimeRust-009, REQ-FprimeRust-011, REQ-FprimeRust-014
+Covers:    REQ-FprimeRust-008, REQ-FprimeRust-009, REQ-FprimeRust-011, REQ-FprimeRust-014, REQ-RustCounter-005, REQ-RustMonitor-005
 Setup:     L0-2 passed.
 Procedure: MARK(60); bracket (2 samples); wait 5 s; bracket (2 samples); MARK(61).
 Window:    Marker(id=60) … Marker(id=61)
-Pass rule: named checks declared in the integration test (test_L2_4). metrics: event CdhCore.cmdDisp.OpCodeError count == 0; delta(rustCounter.TickCount) in 4..8 (rate group 1 runs at 1 Hz; 5 s window plus bracket sampling admits 4..8 ticks); delta(rustMonitor.RunCount) in 4..8.
+Pass rule: named checks declared in the integration test (test_L2_4). metrics: delta(rustCounter.TickCount) in 4..8 (rate group 1 runs at 1 Hz: Main.cpp startRateGroups(Fw::TimeInterval(1, 0)) with divider 1 in FprimeRustReferenceTopology.cpp; a 5 s window plus bracket sampling admits 4..8 ticks); delta(rustMonitor.RunCount) in 4..8; event CdhCore.cmdDisp.OpCodeError count == 0.
 Evidence:  TickCount and RunCount each advance 4..8 over the window.
 Planted faults:none
 
 ID:        L2-5
 Title:     Queued Rust command and limit exceedance
 Purpose:   Sets the monitor limit then bumps past it to prove a queued Rust component handles commands and raises a warning event from a relayed count.
-Covers:    REQ-FprimeRust-008, REQ-FprimeRust-012, REQ-FprimeRust-013
+Covers:    REQ-FprimeRust-008, REQ-FprimeRust-012, REQ-FprimeRust-013, REQ-RustMonitor-001, REQ-RustMonitor-004, REQ-RustMonitor-006, REQ-RustMonitor-003
 Setup:     L2-3 passed.
-Procedure: MARK(70); bracket (2 samples); rustMonitor.SET_LIMIT(4); rustCounter.RESET(); rustCounter.BUMP(10); wait 2 s; rustMonitor.SET_LIMIT(4294967295); bracket (2 samples); MARK(71).
+Procedure: MARK(70); bracket (2 samples); rustMonitor.SET_LIMIT(4); rustCounter.RESET(); rustCounter.BUMP(10); wait 2 s; rustMonitor.SET_LIMIT(4294967295); wait 2 s; bracket (2 samples); MARK(71).
 Window:    Marker(id=70) … Marker(id=71)
-Pass rule: named checks declared in the integration test (test_L2_5). metrics: event rustMonitor.LimitSet(limit=4) count == 1; event rustMonitor.LimitExceeded(count=10, limit=4) count == 1 (the count 10 reaches the queued component on the next run, within the 2 s wait); delta(rustMonitor.Exceedances) == 1; event rustMonitor.LimitSet count == 2; last(rustMonitor.Limit) == 4294967295; event CdhCore.cmdDisp.OpCodeError count == 0.
+Pass rule: named checks declared in the integration test (test_L2_5). metrics: event rustMonitor.LimitSet(limit=4) count == 1; event rustMonitor.LimitExceeded(count=10, limit=4) count == 1 (the count 10 reaches the queued component on the next 1 Hz run, within the 2 s wait); delta(rustMonitor.Exceedances) == 1; last(rustMonitor.LastCount) == 10; event rustMonitor.LimitSet count == 2; first(rustMonitor.Limit) == 4294967295 (Limit is published every run, so the first sample in the window shows the initial limit before SET_LIMIT(4) is dispatched); last(rustMonitor.Limit) == 4294967295; event CdhCore.cmdDisp.OpCodeError count == 0.
 Evidence:  LimitSet(4), LimitExceeded(10, 4), Exceedances +1, limit restored.
 Planted faults:limit_not_set
 
 ID:        L4-1
 Title:     Endurance 60 s
 Purpose:   Runs the deployment for 60 s to prove the Rust components keep servicing rate-group ports with no command errors or counter drift.
-Covers:    REQ-FprimeRust-014, REQ-FprimeRust-029
+Covers:    REQ-FprimeRust-014, REQ-RustCounter-005, REQ-RustMonitor-005
 Setup:     L2-4 passed.
 Procedure: MARK(80); bracket (2 samples); wait 60 s; bracket (2 samples); MARK(81).
 Window:    Marker(id=80) … Marker(id=81)
-Pass rule: named checks declared in the integration test (test_L4_1). metrics: delta(rustCounter.Counter) == 0; event rustCounter.Saturated count == 0; event CdhCore.cmdDisp.OpCodeError count == 0; delta(rustCounter.TickCount) in 55..4294967295 (1 Hz over 60 s with scheduler jitter margin); delta(rustMonitor.RunCount) in 55..4294967295.
-Evidence:  ≥ 55 ticks and runs; Counter unchanged.
+Pass rule: named checks declared in the integration test (test_L4_1). metrics: delta(rustCounter.TickCount) in 55..65 (1 Hz (Main.cpp, divider 1) over 60 s with scheduler jitter margin); delta(rustMonitor.RunCount) in 55..65; delta(rustCounter.Counter) == 0; event rustCounter.Saturated count == 0; event CdhCore.cmdDisp.OpCodeError count == 0.
+Evidence:  55..65 ticks and runs; Counter unchanged.
 Planted faults:none
 
 ID:        L5-1
 Title:     Saturation fault path
 Purpose:   Drives the counter into THRESHOLD saturation to prove the Rust warning event and the clamp.
-Covers:    REQ-FprimeRust-013, REQ-FprimeRust-015
+Covers:    REQ-FprimeRust-013, REQ-FprimeRust-015, REQ-RustCounter-003, REQ-RustCounter-006
 Setup:     L2-2 passed.
 Procedure: MARK(90); bracket (2 samples); rustCounter.RESET(); rustCounter.THRESHOLD_PRM_SET(3); rustCounter.BUMP(2); rustCounter.BUMP(2); rustCounter.THRESHOLD_PRM_SET(100); bracket (2 samples); MARK(91).
 Window:    Marker(id=90) … Marker(id=91)
@@ -124,24 +124,24 @@ Planted faults:bump_zero
 ID:        L6-1
 Title:     Negative control: SET_LIMIT(0) rejected
 Purpose:   Sends an invalid limit to prove the Rust handler rejects it with a validation error and changes nothing else.
-Covers:    REQ-FprimeRust-012, REQ-FprimeRust-013
-Setup:     L2-5 passed; limit at U32::MAX.
-Procedure: MARK(100); bracket (2 samples); rustMonitor.SET_LIMIT(0); bracket (2 samples); MARK(101).
+Covers:    REQ-FprimeRust-012, REQ-FprimeRust-013, REQ-RustMonitor-002, REQ-RustMonitor-006
+Setup:     L2-5 passed; limit at 4294967295.
+Procedure: MARK(100); bracket (2 samples); rustMonitor.SET_LIMIT(0); wait 2 s; bracket (2 samples); MARK(101).
 Window:    Marker(id=100) … Marker(id=101)
-Pass rule: named checks declared in the integration test (test_L6_1). metrics: event rustMonitor.InvalidLimit(limit=0) count == 1; event CdhCore.cmdDisp.OpCodeError(error=VALIDATION_ERROR) count == 1 (negative control: the rejection is visible at the dispatcher and nothing else happened); event rustMonitor.LimitSet count == 0; delta(rustMonitor.Limit) == 0; delta(rustMonitor.Exceedances) == 0; event rustCounter.Bumped count == 0.
+Pass rule: named checks declared in the integration test (test_L6_1). metrics: event rustMonitor.InvalidLimit(limit=0) count == 1; event CdhCore.cmdDisp.OpCodeError(error=VALIDATION_ERROR) count == 1 (negative control: the rejection is visible at the dispatcher and nothing else happened); event rustMonitor.LimitSet count == 0; delta(rustMonitor.Limit) == 0; last(rustMonitor.Limit) == 4294967295; delta(rustMonitor.Exceedances) == 0; event rustCounter.Bumped count == 0.
 Evidence:  InvalidLimit(0), one OpCodeError(VALIDATION_ERROR), Limit and Exceedances unchanged.
 Planted faults:negative_wrong_limit
 
 ID:        L7-1
 Title:     Final state
-Purpose:   Resets the counter and reads the installed executable back out of band to leave the deployment in an independently verifiable state.
-Covers:    REQ-FprimeRust-010, REQ-FprimeRust-011, REQ-FprimeRust-029
+Purpose:   Saves THRESHOLD 42 into the parameter file, downlinks the file and resets the counter to leave the deployment in an independently verifiable state.
+Covers:    REQ-FprimeRust-010, REQ-FprimeRust-011, REQ-FprimeRust-015, REQ-RustCounter-001, REQ-RustCounter-004, REQ-RustCounter-007, REQ-Relay-001, REQ-Relay-002, REQ-RustMonitor-003
 Setup:     All earlier tests run.
-Procedure: MARK(110); bracket (2 samples); rustCounter.RESET(); bracket (2 samples); MARK(111); action: bench dump reads the installed executable back to {readback}.
+Procedure: MARK(110); bracket (2 samples); rustCounter.THRESHOLD_PRM_SET(42); rustCounter.THRESHOLD_PRM_SAVE(); FileHandling.prmDb.PRM_SAVE_FILE(); wait 2 s; FileHandling.fileDownlink.SendFile(PrmDb.dat, PrmDb.dat); wait 5 s; rustCounter.RESET(); bracket (2 samples); MARK(111); action: the auditor parses the downlinked PrmDb.dat in the GDS files directory (CRC32, 0xA5 delimiter, U32 record size, FwPrmIdType id, value; Svc/PrmDb/docs/sdd.md §3.2) and requires THRESHOLD (id 0x10016000) == 42.
 Window:    Marker(id=110) … Marker(id=111)
-Pass rule: named checks declared in the integration test (test_L7_1). metrics: event rustCounter.ResetIssued count == 1; last(rustCounter.Counter) == 0; delta(relay.Relayed) == 1 (the reset count 0 travels Rust→C++→Rust one more time); event CdhCore.cmdDisp.OpCodeError count == 0.
-Evidence:  ResetIssued; Counter 0; Relayed +1; readback sha256 equals the manifest image.
-Planted faults:skip_reset
+Pass rule: named checks declared in the integration test (test_L7_1). metrics: event FileHandling.prmDb.PrmFileSaveComplete(records=1) count == 1 (THRESHOLD is the only parameter in the deployment, so the saved file holds exactly one record); event FileHandling.fileDownlink.FileSent count == 1; event rustCounter.ResetIssued count == 1; last(rustCounter.Counter) == 0; last(rustMonitor.LastCount) == 0; delta(relay.Relayed) == 1 (the reset count 0 travels Rust→C++→Rust one more time); event CdhCore.cmdDisp.OpCodeError count == 0.
+Evidence:  PrmFileSaveComplete(1), FileSent, ResetIssued; Counter 0; Relayed +1; downlinked PrmDb.dat holds THRESHOLD = 42.
+Planted faults:skip_reset, threshold_not_saved
 
 ## 4 Traceability
 | REQ | Tests | Note |
@@ -153,20 +153,19 @@ Planted faults:skip_reset
 | REQ-FprimeRust-005 | waived: Unit Test | Unit Test |
 | REQ-FprimeRust-006 | waived: Unit Test | Unit Test |
 | REQ-FprimeRust-007 | waived: Unit Test | Unit Test |
-| REQ-FprimeRust-008 | Integration Test: L2-1, L2-4, L2-5 | Integration Test |
-| REQ-FprimeRust-009 | Integration Test: L2-3, L2-4 | Integration Test |
-| REQ-FprimeRust-010 | Integration Test: L2-3, L7-1 | Integration Test |
+| REQ-FprimeRust-008 | Unit Test; Integration Test: L2-1, L2-4, L2-5 | Unit Test; Integration Test |
+| REQ-FprimeRust-009 | Unit Test; Integration Test: L2-3, L2-4 | Unit Test; Integration Test |
+| REQ-FprimeRust-010 | Unit Test; Integration Test: L2-3, L7-1 | Unit Test; Integration Test |
 | REQ-FprimeRust-011 | Integration Test: L2-3, L2-4, L7-1 | Integration Test |
-| REQ-FprimeRust-012 | Integration Test: L2-1, L2-5, L6-1 | Integration Test |
-| REQ-FprimeRust-013 | Integration Test: L2-1, L2-5, L5-1, L6-1 | Integration Test |
-| REQ-FprimeRust-014 | Integration Test: L2-1, L2-4, L4-1 | Integration Test |
-| REQ-FprimeRust-015 | Integration Test: L2-2, L5-1 | Integration Test |
+| REQ-FprimeRust-012 | Unit Test; Integration Test: L2-1, L2-5, L6-1 | Unit Test; Integration Test |
+| REQ-FprimeRust-013 | Unit Test; Integration Test: L2-1, L2-5, L5-1, L6-1 | Unit Test; Integration Test |
+| REQ-FprimeRust-014 | Unit Test; Integration Test: L2-1, L2-4, L4-1 | Unit Test; Integration Test |
+| REQ-FprimeRust-015 | Unit Test; Integration Test: L2-2, L5-1, L7-1 | Unit Test; Integration Test |
 | REQ-FprimeRust-016 | waived: Unit Test | Unit Test |
 | REQ-FprimeRust-017 | waived: Unit Test | Unit Test |
-| REQ-FprimeRust-018 | waived: Unit Test | Unit Test |
-| REQ-FprimeRust-019 | waived: Unit Test | Unit Test |
-| REQ-FprimeRust-020 | waived: Inspection | Inspection |
-| REQ-FprimeRust-021 | waived: Inspection | Inspection |
+| REQ-FprimeRust-018 | waived: Inspection | Inspection |
+| REQ-FprimeRust-020 | waived: Unit Test | Unit Test |
+| REQ-FprimeRust-021 | waived: Unit Test | Unit Test |
 | REQ-FprimeRust-022 | waived: Unit Test | Unit Test |
 | REQ-FprimeRust-023 | waived: Unit Test | Unit Test |
 | REQ-FprimeRust-024 | waived: Unit Test | Unit Test |
@@ -174,23 +173,48 @@ Planted faults:skip_reset
 | REQ-FprimeRust-026 | waived: Unit Test | Unit Test |
 | REQ-FprimeRust-027 | waived: Unit Test | Unit Test |
 | REQ-FprimeRust-028 | waived: Unit Test | Unit Test |
-| REQ-FprimeRust-029 | Integration Test: L2-1, L2-2, L4-1, L7-1 | Integration Test |
+| REQ-FprimeRust-030 | waived: Unit Test | Unit Test |
+| REQ-FprimeRust-031 | waived: Unit Test | Unit Test |
+| REQ-FprimeRust-032 | waived: Unit Test | Unit Test |
+| REQ-FprimeRust-033 | waived: Unit Test | Unit Test |
+| REQ-FprimeRust-034 | waived: Unit Test | Unit Test |
+| REQ-FprimeRust-035 | waived: Unit Test | Unit Test |
+| REQ-FprimeRust-036 | waived: Unit Test | Unit Test |
+| REQ-FprimeRust-037 | waived: Unit Test | Unit Test |
+| REQ-FprimeRust-038 | waived: Unit Test | Unit Test |
+| REQ-FprimeRust-039 | waived: Unit Test | Unit Test |
+| REQ-FprimeRust-040 | waived: Inspection | Inspection |
+| REQ-RustCounter-001 | Unit Test; Integration Test: L2-1, L7-1 | Unit Test; Integration Test |
+| REQ-RustCounter-002 | Unit Test; Integration Test: L2-1, L2-3 | Unit Test; Integration Test |
+| REQ-RustCounter-003 | Unit Test; Integration Test: L2-2, L5-1 | Unit Test; Integration Test |
+| REQ-RustCounter-004 | Unit Test; Integration Test: L2-1, L2-3, L7-1 | Unit Test; Integration Test |
+| REQ-RustCounter-005 | Unit Test; Integration Test: L2-4, L4-1 | Unit Test; Integration Test |
+| REQ-RustCounter-006 | Unit Test; Integration Test: L2-2, L5-1 | Unit Test; Integration Test |
+| REQ-RustCounter-007 | Integration Test: L7-1 | Integration Test |
+| REQ-RustMonitor-001 | Unit Test; Integration Test: L2-5 | Unit Test; Integration Test |
+| REQ-RustMonitor-002 | Unit Test; Integration Test: L6-1 | Unit Test; Integration Test |
+| REQ-RustMonitor-003 | Unit Test; Integration Test: L2-3, L2-5, L7-1 | Unit Test; Integration Test |
+| REQ-RustMonitor-004 | Unit Test; Integration Test: L2-5 | Unit Test; Integration Test |
+| REQ-RustMonitor-005 | Unit Test; Integration Test: L2-4, L4-1 | Unit Test; Integration Test |
+| REQ-RustMonitor-006 | Unit Test; Integration Test: L2-5, L6-1 | Unit Test; Integration Test |
+| REQ-Relay-001 | Unit Test; Integration Test: L2-3, L7-1 | Unit Test; Integration Test |
+| REQ-Relay-002 | Unit Test; Integration Test: L2-3, L7-1 | Unit Test; Integration Test |
 
 ## 5 Metrics
-- L0-1: event CdhCore.version.ProjectVersion count == 1; event CdhCore.version.FrameworkVersion count == 1; event CdhCore.cmdDisp.OpCodeError count == 0
+- L0-1: event CdhCore.version.ProjectVersion count == 1; event CdhCore.version.FrameworkVersion count == 1; event CdhCore.version.LibraryVersions count == 1; version payloads of ProjectVersion, FrameworkVersion, LibraryVersions are non-empty and not UNKNOWN; event CdhCore.cmdDisp.OpCodeError count == 0
 - L0-2: event CdhCore.cmdDisp.NoOpStringReceived count == 3; event CdhCore.cmdDisp.OpCodeError count == 0
 - L2-1: event rustCounter.ResetIssued count == 1; event rustCounter.Bumped(value=7) count == 1; event rustCounter.Bumped(value=12) count == 1; event rustCounter.ResetIssued precedes event rustCounter.Bumped(value=7); last(rustCounter.Counter) == 12; event rustCounter.Saturated count == 0; event CdhCore.cmdDisp.OpCodeError count == 0
 - L2-2: event rustCounter.Saturated(value=5, threshold=5) count == 1; last(rustCounter.Counter) == 5; event rustCounter.Bumped count == 0; event CdhCore.cmdDisp.OpCodeError count == 0
 - L2-3: event rustCounter.Bumped(value=3) count == 1; delta(relay.Relayed) == 2; last(rustMonitor.LastCount) == 3; event rustMonitor.LimitExceeded count == 0; event CdhCore.cmdDisp.OpCodeError count == 0
-- L2-4: event CdhCore.cmdDisp.OpCodeError count == 0; delta(rustCounter.TickCount) in 4..8; delta(rustMonitor.RunCount) in 4..8
-- L2-5: event rustMonitor.LimitSet(limit=4) count == 1; event rustMonitor.LimitExceeded(count=10, limit=4) count == 1; delta(rustMonitor.Exceedances) == 1; event rustMonitor.LimitSet count == 2; last(rustMonitor.Limit) == 4294967295; event CdhCore.cmdDisp.OpCodeError count == 0
-- L4-1: delta(rustCounter.Counter) == 0; event rustCounter.Saturated count == 0; event CdhCore.cmdDisp.OpCodeError count == 0; delta(rustCounter.TickCount) in 55..4294967295; delta(rustMonitor.RunCount) in 55..4294967295
+- L2-4: delta(rustCounter.TickCount) in 4..8; delta(rustMonitor.RunCount) in 4..8; event CdhCore.cmdDisp.OpCodeError count == 0
+- L2-5: event rustMonitor.LimitSet(limit=4) count == 1; event rustMonitor.LimitExceeded(count=10, limit=4) count == 1; delta(rustMonitor.Exceedances) == 1; last(rustMonitor.LastCount) == 10; event rustMonitor.LimitSet count == 2; first(rustMonitor.Limit) == 4294967295; last(rustMonitor.Limit) == 4294967295; event CdhCore.cmdDisp.OpCodeError count == 0
+- L4-1: delta(rustCounter.TickCount) in 55..65; delta(rustMonitor.RunCount) in 55..65; delta(rustCounter.Counter) == 0; event rustCounter.Saturated count == 0; event CdhCore.cmdDisp.OpCodeError count == 0
 - L5-1: event rustCounter.Bumped(value=2) count == 1; event rustCounter.Saturated(value=3, threshold=3) count == 1; last(rustCounter.Counter) == 3; event rustCounter.Bumped(value=2) precedes event rustCounter.Saturated(value=3, threshold=3); event CdhCore.cmdDisp.OpCodeError count == 0
-- L6-1: event rustMonitor.InvalidLimit(limit=0) count == 1; event CdhCore.cmdDisp.OpCodeError(error=VALIDATION_ERROR) count == 1; event rustMonitor.LimitSet count == 0; delta(rustMonitor.Limit) == 0; delta(rustMonitor.Exceedances) == 0; event rustCounter.Bumped count == 0
-- L7-1: event rustCounter.ResetIssued count == 1; last(rustCounter.Counter) == 0; delta(relay.Relayed) == 1; event CdhCore.cmdDisp.OpCodeError count == 0
+- L6-1: event rustMonitor.InvalidLimit(limit=0) count == 1; event CdhCore.cmdDisp.OpCodeError(error=VALIDATION_ERROR) count == 1; event rustMonitor.LimitSet count == 0; delta(rustMonitor.Limit) == 0; last(rustMonitor.Limit) == 4294967295; delta(rustMonitor.Exceedances) == 0; event rustCounter.Bumped count == 0
+- L7-1: event FileHandling.prmDb.PrmFileSaveComplete(records=1) count == 1; event FileHandling.fileDownlink.FileSent count == 1; event rustCounter.ResetIssued count == 1; last(rustCounter.Counter) == 0; last(rustMonitor.LastCount) == 0; delta(relay.Relayed) == 1; event CdhCore.cmdDisp.OpCodeError count == 0
 
 ## 6 Fault menu
-Generated from `planted_faults.py` planted fault declarations (`fth planted-faults-menu`): bump_wrong_amount (harness-expectation; L2-1, L2-3); bump_zero (uut-state; L5-1); limit_not_set (uut-state; L2-5); negative_wrong_limit (stimulus; L6-1); skip_reset (stimulus; L2-1, L7-1); threshold_not_set (uut-state; L2-2).
+Generated from `planted_faults.py` planted fault declarations (`fth planted-faults-menu`): bump_wrong_amount (harness-expectation; L2-1, L2-3); bump_zero (uut-state; L5-1); limit_not_set (uut-state; L2-5); negative_wrong_limit (stimulus; L6-1); skip_reset (stimulus; L2-1, L7-1); threshold_not_saved (uut-state; L7-1); threshold_not_set (uut-state; L2-2).
 
 ## 7 Not covered
 L3 reset/persistence (no reset row on the native bench)
@@ -203,5 +227,12 @@ L3 reset/persistence (no reset row on the native bench)
 5. Captain (2026-11-09): pin lib/fprime to nasa/fprime devel b188d185ec46699b5fdc0a0666537896a5ea9d47 and lib/fprime-rust to lestarch-autobot/fprime-rust main; submodule edit is DEVELOPMENT work.
 6. Author (2026-11-10): markers use CdhCore.cmdDisp.CMD_NO_OP_STRING / NoOpStringReceived so bracketing does not depend on the UUT's own command path; no helper component.
 7. Author (2026-11-10): L3 not covered — the native bench has no reset row; acknowledged in coverage.not_covered_ack. Recommended ruling: accept, or add a reset row (kill + relaunch via gds) in DEVELOPMENT if persistence proof is wanted.
-8. Author (2026-11-10): REQ-FprimeRust-018 (one archive) is verified by a build unit test (one libfprime_rust_<Deployment>.a on the link line, one copy of the Rust runtime symbols), not by a system test; L0-1 is an entry gate.
-9. Author (2026-11-10): max planted faults per run = 2; menu holds 6 faults ≥ 2×2; every system-covered requirement has ≥2 covering tests with disjoint planted-fault sets.
+8. Author (2026-11-10, revised round 1): REQ-FprimeRust-018 (one Rust runtime per executable) is verified by Inspection of the build (UT-BUILD-1: exactly one libfprime_rust_<Deployment>.a on the link line, `nm` shows one definition of rust_begin_unwind, no duplicate-symbol diagnostics); L0-1 is an entry gate.
+9. Author (2026-11-10, revised round 1): max planted faults per run = 2; menu holds 7 faults ≥ 2×2; every system-covered requirement has ≥2 covering tests with disjoint planted-fault sets or a waiver note; ripples stated per fault (every functional test opens with RESET or an explicit SET_LIMIT, which insulates it from the previous test's residue).
+10. Author (round 1, 2026-11-10): component SDD requirement tables kept (anchor E-2); every REQ-RustCounter/RustMonitor/Relay id traced here with rationale; verify-plan --sdd passes against all four SDDs.
+11. Author (round 1): unconnected output port invoked from Rust is owned by the autocoded component base (FW_ASSERT in X_out, F Prime user manual, ports); Rust sees the same abort as C++ (REQ-FprimeRust-024). Rust allocation failure: the alloc-error handler aborts under panic=abort (Rust runtime owned).
+12. Author (round 1): `@ fprime-rust` on a non-component element is ignored (UT-AC-1). THRESHOLD invalid/absent in prmDb: FPP default 100 applies (framework parameter semantics). RustMonitor queue full: countIn drops (FPP `drop`), SET_LIMIT asserts (F Prime default); Relay countOut unconnected: count dropped, Relayed still counts.
+13. Author (round 1): bench `dump` reads the installed executable because fth v0.1.2 flash() requires read-back sha256 == image sha256; final state is the in-band PrmDb.dat save + file downlink (see final_state). NEW elicitation finding for the anchor.
+14. Author (round 1): lib/fprime-rust submodule URL changes from https://github.com/JPL-Devin/fprime-rust.git (branch devin/1778113254-initial-import) to https://github.com/lestarch-autobot/fprime-rust.git branch main, and lib/fprime is pinned to nasa/fprime b188d185ec46699b5fdc0a0666537896a5ea9d47 — both DEVELOPMENT edits. bench/native_flash.py and bench/native_dump.py are design items DEVELOPMENT creates and the package pins.
+15. Author (round 1): L0-1 judges that version events are present with non-empty payloads; equality with manifest repos[].describe is the fth deliver/audit dictionary-describe check (fth v0.1.2 engine has no manifest-substituted predicate), declared by image_version policy required.
+16. Author (round 1): the fpp-check gate ran on the full closure (reference FPP + nasa/fprime b188d185 Fw/Svc/Drv/Os/Utils/CFDP/default/Fpp/cmake + unix PlatformTypes.fpp, fpp-check v4.0.0a1 = the pin's requirements.txt) — clean; topology uses `deployment topology` (accepted by fpp 4.0.0a1).

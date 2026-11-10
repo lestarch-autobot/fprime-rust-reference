@@ -10,7 +10,9 @@
       ],
       "fails": {
         "L2-1": [
+          "event rustCounter.Bumped(value=7) count == 1",
           "event rustCounter.Bumped(value=12) count == 1",
+          "event rustCounter.ResetIssued precedes event rustCounter.Bumped(value=7)",
           "last(rustCounter.Counter) == 12"
         ],
         "L2-3": [
@@ -18,7 +20,7 @@
           "last(rustMonitor.LastCount) == 3"
         ]
       },
-      "mechanism": "harness sends BUMP(amount+1) while the plan expects the planned amounts; the counter, Bumped value and relayed LastCount all move by one",
+      "mechanism": "harness sends BUMP(amount+1) while the plan expects the planned amounts: every Bumped payload, the final Counter and the relayed LastCount move by one; the next test opens with RESET, so nothing ripples",
       "kind": "rewrite",
       "ripples_to": {}
     },
@@ -32,10 +34,11 @@
         "L5-1": [
           "event rustCounter.Bumped(value=2) count == 1",
           "event rustCounter.Saturated(value=3, threshold=3) count == 1",
-          "last(rustCounter.Counter) == 3"
+          "last(rustCounter.Counter) == 3",
+          "event rustCounter.Bumped(value=2) precedes event rustCounter.Saturated(value=3, threshold=3)"
         ]
       },
-      "mechanism": "both planned BUMP(2) are sent as BUMP(0): the counter stays 0, so neither Bumped(2) nor Saturated(3, 3) occurs",
+      "mechanism": "both planned BUMP(2) are sent as BUMP(0): the counter stays 0, so Bumped(2), Saturated(3, 3) and the precedes check all fail; L6-1 does not read the counter and L7-1 resets it",
       "kind": "rewrite",
       "ripples_to": {}
     },
@@ -52,7 +55,7 @@
           "delta(rustMonitor.Exceedances) == 1"
         ]
       },
-      "mechanism": "the planned SET_LIMIT(4) is sent as SET_LIMIT(4000): the UUT limit is never exceeded by the count 10",
+      "mechanism": "the planned SET_LIMIT(4) is sent as SET_LIMIT(4000): the UUT limit is never exceeded by the count 10; the closing SET_LIMIT(4294967295) restores the limit L6-1 expects",
       "kind": "rewrite",
       "ripples_to": {}
     },
@@ -66,10 +69,12 @@
         "L6-1": [
           "event rustMonitor.InvalidLimit(limit=0) count == 1",
           "event CdhCore.cmdDisp.OpCodeError(error=VALIDATION_ERROR) count == 1",
-          "event rustMonitor.LimitSet count == 0"
+          "event rustMonitor.LimitSet count == 0",
+          "delta(rustMonitor.Limit) == 0",
+          "last(rustMonitor.Limit) == 4294967295"
         ]
       },
-      "mechanism": "the negative control sends SET_LIMIT(1) instead of SET_LIMIT(0): the command is accepted, so the expected rejection never happens (the limit is left at 1; L7-1 sends count 0, which does not exceed it)",
+      "mechanism": "the negative control sends SET_LIMIT(1) instead of SET_LIMIT(0): the command is accepted (LimitSet, Limit 1), so the rejection never happens; the limit stays 1 into L7-1, where the only count is 0 and does not exceed it, so nothing ripples",
       "kind": "rewrite",
       "ripples_to": {}
     },
@@ -87,10 +92,28 @@
         ],
         "L7-1": [
           "event rustCounter.ResetIssued count == 1",
+          "last(rustCounter.Counter) == 0",
+          "last(rustMonitor.LastCount) == 0",
           "delta(relay.Relayed) == 1"
         ]
       },
-      "mechanism": "the planned RESET is replaced by CdhCore.cmdDisp.CMD_NO_OP, so no ResetIssued event and no count travels the port chain",
+      "mechanism": "the planned RESET is replaced by CdhCore.cmdDisp.CMD_NO_OP: no ResetIssued, no count travels the port chain, and in L7-1 the counter stays at 3 (left by L5-1) so Counter is not 0 and no count 0 reaches LastCount (its last sample stays 10 from L2-5); L2-2 opens with its own RESET, so nothing ripples",
+      "kind": "insert",
+      "ripples_to": {}
+    },
+    {
+      "name": "threshold_not_saved",
+      "class": "uut-state",
+      "applies_to": [
+        "L7-1"
+      ],
+      "fails": {
+        "L7-1": [
+          "event FileHandling.prmDb.PrmFileSaveComplete(records=1) count == 1",
+          "event FileHandling.fileDownlink.FileSent count == 1"
+        ]
+      },
+      "mechanism": "the planned FileHandling.prmDb.PRM_SAVE_FILE is replaced by CdhCore.cmdDisp.CMD_NO_OP: the parameter file on the UUT is never written, so PrmFileSaveComplete is absent, the downlinked PrmDb.dat (if any earlier file exists) does not hold THRESHOLD 42, and the auditor's final-state parse fails; this is the fault that disturbs the final-state artifact",
       "kind": "insert",
       "ripples_to": {}
     },
@@ -107,7 +130,7 @@
           "event rustCounter.Bumped count == 0"
         ]
       },
-      "mechanism": "the planned THRESHOLD_PRM_SET(5) is sent as THRESHOLD_PRM_SET(100): the UUT keeps the default threshold and BUMP(9) does not saturate",
+      "mechanism": "the planned THRESHOLD_PRM_SET(5) is sent as THRESHOLD_PRM_SET(100): the UUT keeps the default threshold and BUMP(9) does not saturate; the closing THRESHOLD_PRM_SET(100) restores the state L5-1 expects",
       "kind": "rewrite",
       "ripples_to": {}
     }

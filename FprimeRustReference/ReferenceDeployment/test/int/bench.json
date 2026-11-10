@@ -3,12 +3,12 @@
   "dictionary": "uut/build-artifacts/Linux/FprimeRustReference/dict/FprimeRustReferenceTopologyDictionary.json",
   "serial": "native-<hostname>",
   "vars": {
-    "install": "/tmp/fth-rust-ref/FprimeRustReference",
+    "install": "run/FprimeRustReference/FprimeRustReference",
     "zmq": "ipc:///tmp/fprime-server-in ipc:///tmp/fprime-server-out"
   },
   "flash": "python3 bench/native_flash.py --image {image} --install {install}",
   "dump": "python3 bench/native_dump.py --install {install} --readback {readback}",
-  "gds": "fprime-gds -n --dictionary {dictionary} --app {install} --gui none --zmq-transport {zmq} --logs {logs}",
+  "gds": "fprime-gds --dictionary {dictionary} --app {install} --gui none --zmq-transport {zmq} --logs {logs}",
   "recorder": "fprime-cli events --dictionary {dictionary} --zmq-transport {zmq} --logs {logs}",
   "send": "fprime-cli command-send --dictionary {dictionary} --zmq-transport {zmq} --logs {logs} {command} --arguments {args}",
   "timeouts": {
@@ -21,7 +21,7 @@
   },
   "provenance": {
     "serial_re": "Serial# = (\\S+)",
-    "note": "R7: native_flash.py copies the delivered executable (no suffix) to {install}, chmod +x, and prints 'Serial# = native-<hostname>'; native_dump.py copies {install} back to {readback}. Both scripts are pinned in the input package (bench/), written in DEVELOPMENT."
+    "note": "R7: bench/native_flash.py (pinned in the input package; created in DEVELOPMENT) empties run/FprimeRustReference/, copies the delivered executable (no suffix) to {install}, chmod +x, and prints 'Serial# = native-<hostname>'; bench/native_dump.py (same) copies {install} back to {readback} so fth's flash read-back hashes equal to the image. The GDS launches the app from run/FprimeRustReference/ (fresh PrmDb.dat per run)."
   },
-  "notes": "Native Linux x86_64 host, no hardware. Relative paths only: run from the campaign root. fprime-gds launches the executable itself (--app) and the deployment's Drv.TcpClient connects to the GDS server on 127.0.0.1:50000. No reset row: the plan acknowledges L3 as not covered."
+  "notes": "Native Linux x86_64 host, no hardware. Relative paths only, from the campaign root; the dictionary path is the uut build-artifacts tree and relies on the package's dictionary rewrite (fth run.effective_bench → sealed dict). fprime-gds launches the executable itself (--app; no -n) and the deployment's Drv.TcpClient connects to the GDS server on 127.0.0.1:50000; framing is the fprime-gds default (space packets), matching ComCcsds.Subtopology — DEVELOPMENT confirms on the dry run. The GDS owns the process: a non-zero exit of the app is a bench fault, not a UUT fact. No reset row: the plan acknowledges L3 as not covered."
 }

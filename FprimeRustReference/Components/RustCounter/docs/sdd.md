@@ -3,43 +3,46 @@
 ## Introduction
 
 `RustCounter` is an active component implemented in Rust through `fprime-rust`. It keeps a counter
-that commands reset and bump, saturating at a parameter; a rate-group port counts ticks; every change
-is reported on an output port to a C++ component. It exists to exercise the Rust integration end to
-end in the reference deployment.
+that commands reset and bump, saturating at a parameter; a rate-group port counts ticks; every command
+completion is reported on an output port to a C++ component. It exists to exercise the Rust integration
+end to end in the reference deployment.
 
 ## Requirements
 
 | ID | Requirement | Verification |
 |---|---|---|
-| REQ-RustCounter-001 | RESET shall set the counter to zero and emit `ResetIssued`. | Integration Test: L2-1 |
-| REQ-RustCounter-002 | BUMP shall add its amount to the counter and emit `Bumped` with the new value. | Integration Test: L2-1, L2-3 |
-| REQ-RustCounter-003 | The counter shall not exceed THRESHOLD; a saturating BUMP shall emit `Saturated`. | Integration Test: L2-2, L5-1 |
-| REQ-RustCounter-004 | Every counter change shall be published on `Counter` and sent on `countOut`. | Integration Test: L2-1, L2-3 |
-| REQ-RustCounter-005 | Each `tick` shall increment `TickCount` and publish it. | Integration Test: L2-4, L4-1 |
-| REQ-RustCounter-006 | THRESHOLD shall be re-read on every BUMP. | Integration Test: L2-2 |
+| REQ-RustCounter-001 | RESET shall set the counter to zero and emit `ResetIssued`. | Unit Test; Integration Test: L2-1, L7-1 |
+| REQ-RustCounter-002 | A BUMP whose sum does not exceed THRESHOLD shall add its amount to the counter and emit `Bumped` with the new value. | Unit Test; Integration Test: L2-1, L2-3 |
+| REQ-RustCounter-003 | A BUMP whose sum would exceed THRESHOLD shall set the counter to THRESHOLD and emit `Saturated`, never wrapping. | Unit Test; Integration Test: L2-2, L5-1 |
+| REQ-RustCounter-004 | Every completed RESET or BUMP shall publish `Counter` and send the counter on `countOut`, whether or not the value changed. | Unit Test; Integration Test: L2-1, L2-3, L7-1 |
+| REQ-RustCounter-005 | Each `tick` shall increment `TickCount` and publish `TickCount` and `Counter`. | Unit Test; Integration Test: L2-4, L4-1 |
+| REQ-RustCounter-006 | A THRESHOLD update shall take effect on the next BUMP. | Unit Test; Integration Test: L2-2, L5-1 |
+| REQ-RustCounter-007 | THRESHOLD saved by `THRESHOLD_PRM_SAVE` and `PRM_SAVE_FILE` shall persist in the parameter file. | Integration Test: L7-1 |
 
-Command table (REQ-RustCounter-001, -002): `RESET`, `BUMP(amount: U32)`. Event table: `ResetIssued`,
-`Bumped(value)`, `Saturated(value, threshold)`. Telemetry table: `Counter`, `TickCount`. Parameter
-table: `THRESHOLD` (U32, default 100).
+Command table (REQ-RustCounter-001..003): `RESET`, `BUMP(amount: U32, 0..=4294967295)`. Event table:
+`ResetIssued`, `Bumped(value)`, `Saturated(value, threshold)`. Telemetry table: `Counter`, `TickCount`.
+Parameter table: `THRESHOLD` (U32, 0..=4294967295, default 100; 0 pins the counter at 0).
 
 ## Design
 
-```mermaid
-flowchart LR
-  tick["tick : Svc.Sched"] --> C[RustCounter]
-  C --> countOut["countOut : FprimeRustReference.Count"]
 ```
-Special ports: time get, command reg/recv/resp, event, text event, telemetry, param get/set.
+                    +---------------------+
+ tick : Svc.Sched ->|                     |-> countOut : FprimeRustReference.Count
+                    |     RustCounter     |
+                    |      (active)       |
+                    +---------------------+
+   special ports: time get, command reg/recv/resp, event, text event, telemetry, param get/set
+```
 
 | Port | Kind | Type | Purpose |
 |---|---|---|---|
 | tick | async input | Svc.Sched | rate-group tick, counts ticks |
-| countOut | output | FprimeRustReference.Count | report counter after change |
+| countOut | output | FprimeRustReference.Count | report counter after each command |
 
 | Command | Args | Effect |
 |---|---|---|
 | RESET | — | counter = 0; `ResetIssued`; `Counter`; `countOut` |
-| BUMP | amount: U32 | counter = min(counter + amount, THRESHOLD); `Bumped` or `Saturated`; `Counter`; `countOut` |
+| BUMP | amount: U32 | if counter + amount > THRESHOLD (computed with `saturating_add`): counter = THRESHOLD, `Saturated(counter, THRESHOLD)`; else counter += amount, `Bumped(counter)` (amount 0 and the equality case are `Bumped`); then `Counter`; `countOut` |
 
 | Event | Severity | Args |
 |---|---|---|
@@ -49,8 +52,8 @@ Special ports: time get, command reg/recv/resp, event, text event, telemetry, pa
 
 | Telemetry | Type | When |
 |---|---|---|
-| Counter | U32 | every change |
-| TickCount | U32 | every tick |
+| Counter | U32 | every RESET/BUMP and every tick |
+| TickCount | U32 | every tick (wraps at U32::MAX) |
 
 | Parameter | Type | Default |
 |---|---|---|
@@ -59,14 +62,18 @@ Special ports: time get, command reg/recv/resp, event, text event, telemetry, pa
 ### Configure
 
 Instance: active, queue `Default.QUEUE_SIZE`, stack `Default.STACK_SIZE`, priority 18; `tick` driven by
-rate group 1 (1 Hz). Source files: `RustCounter.fpp`, `RustCounter.rs` only.
+rate group 1 (1 Hz: `Main.cpp` `startRateGroups(Fw::TimeInterval(1, 0))`, divider 1 in
+`FprimeRustReferenceTopology.cpp`). Source files: `RustCounter.fpp`, `RustCounter.rs` only.
 
 ### Behavior
 
-The component holds a `u32` counter and a `u32` tick count in its Rust state. BUMP reads THRESHOLD,
-adds with saturation, and chooses `Bumped` or `Saturated`; RESET clears. Each change writes `Counter`
-and sends the value on `countOut`; each tick increments and writes `TickCount`. Both commands respond
-`OK`; there is no rejectable input.
+At construction counter = 0 and tick count = 0; nothing is published until the first handler call. BUMP
+reads THRESHOLD (`paramGet_THRESHOLD`, validity ignored: the FPP default applies when prmDb has no value),
+computes `counter.saturating_add(amount)`, and chooses `Saturated` (clamping to THRESHOLD, also when
+THRESHOLD was lowered below the current counter) or `Bumped`; RESET clears. Each command completion writes
+`Counter` and sends the value on `countOut`; each tick increments `TickCount` and writes `TickCount` and
+`Counter`. Both commands respond `OK`; there is no rejectable input. All handlers run on the component's
+thread.
 
 ```mermaid
 sequenceDiagram
@@ -74,17 +81,11 @@ sequenceDiagram
   participant R as rustCounter
   participant L as relay
   G->>R: BUMP(amount)
-  R->>R: paramGet THRESHOLD; counter = min(counter+amount, THRESHOLD)
-  R->>G: Bumped(value) or Saturated(value, threshold)
+  R->>R: paramGet THRESHOLD; sum = counter.saturating_add(amount)
+  R->>G: Bumped(sum) or Saturated(THRESHOLD, THRESHOLD)
   R->>L: countOut(counter)
   R->>G: cmdResponse OK
 ```
-
-Out-of-scope failure modes:
-
-| Failure | Handling |
-|---|---|
-| THRESHOLD invalid (no prmDb value) | default 100 used; validity ignored |
 
 ## Tests
 
@@ -93,15 +94,25 @@ _Generated by `fth render-sdd-tests` from the plan — do not edit by hand; the 
 
 | Test | Purpose | Requirements |
 |---|---|---|
-| L0-1 | Confirms the running executable reports the project, framework and library versions recorded in the delivery manifest. | — |
+| L0-1 | Confirms the running executable reports non-empty project, framework and library version strings for the delivery manifest check. | — |
 | L0-2 | Proves the marker command round-trips through the command path so every later window can be bracketed. | — |
-| L2-1 | Resets and bumps the Rust active component to prove commands dispatch into Rust and events and telemetry come back out. | REQ-FprimeRust-008, REQ-FprimeRust-012, REQ-FprimeRust-013, REQ-FprimeRust-014, REQ-FprimeRust-029 |
-| L2-2 | Sets THRESHOLD to 5 and bumps past it to prove the Rust handler reads the parameter and saturates on it. | REQ-FprimeRust-015, REQ-FprimeRust-029 |
-| L2-3 | Bumps the Rust counter and follows the count through the C++ relay into the Rust monitor to prove typed ports in both directions. | REQ-FprimeRust-009, REQ-FprimeRust-010, REQ-FprimeRust-011 |
-| L2-4 | Lets the 1 Hz rate group tick the active Rust component and run the queued Rust component to prove C++ scheduler ports into Rust handlers. | REQ-FprimeRust-008, REQ-FprimeRust-009, REQ-FprimeRust-011, REQ-FprimeRust-014 |
-| L2-5 | Sets the monitor limit then bumps past it to prove a queued Rust component handles commands and raises a warning event from a relayed count. | REQ-FprimeRust-008, REQ-FprimeRust-012, REQ-FprimeRust-013 |
-| L4-1 | Runs the deployment for 60 s to prove the Rust components keep servicing rate-group ports with no command errors or counter drift. | REQ-FprimeRust-014, REQ-FprimeRust-029 |
-| L5-1 | Drives the counter into THRESHOLD saturation to prove the Rust warning event and the clamp. | REQ-FprimeRust-013, REQ-FprimeRust-015 |
-| L6-1 | Sends an invalid limit to prove the Rust handler rejects it with a validation error and changes nothing else. | REQ-FprimeRust-012, REQ-FprimeRust-013 |
-| L7-1 | Resets the counter and reads the installed executable back out of band to leave the deployment in an independently verifiable state. | REQ-FprimeRust-010, REQ-FprimeRust-011, REQ-FprimeRust-029 |
+| L2-1 | Resets and bumps the Rust active component to prove async commands dispatch into Rust and events and telemetry come back out. | REQ-FprimeRust-008, REQ-FprimeRust-012, REQ-FprimeRust-013, REQ-FprimeRust-014, REQ-RustCounter-001, REQ-RustCounter-002, REQ-RustCounter-004 |
+| L2-2 | Sets THRESHOLD to 5 and bumps past it to prove the Rust handler reads the parameter and saturates on it. | REQ-FprimeRust-015, REQ-RustCounter-003, REQ-RustCounter-006 |
+| L2-3 | Bumps the Rust counter and follows the count through the C++ relay into the Rust monitor to prove typed ports in both directions. | REQ-FprimeRust-009, REQ-FprimeRust-010, REQ-FprimeRust-011, REQ-RustCounter-002, REQ-RustCounter-004, REQ-RustMonitor-003, REQ-Relay-001, REQ-Relay-002 |
+| L2-4 | Lets the 1 Hz rate group tick the active Rust component and run the queued Rust component to prove C++ scheduler ports into Rust handlers. | REQ-FprimeRust-008, REQ-FprimeRust-009, REQ-FprimeRust-011, REQ-FprimeRust-014, REQ-RustCounter-005, REQ-RustMonitor-005 |
+| L2-5 | Sets the monitor limit then bumps past it to prove a queued Rust component handles commands and raises a warning event from a relayed count. | REQ-FprimeRust-008, REQ-FprimeRust-012, REQ-FprimeRust-013, REQ-RustMonitor-001, REQ-RustMonitor-004, REQ-RustMonitor-006, REQ-RustMonitor-003 |
+| L4-1 | Runs the deployment for 60 s to prove the Rust components keep servicing rate-group ports with no command errors or counter drift. | REQ-FprimeRust-014, REQ-RustCounter-005, REQ-RustMonitor-005 |
+| L5-1 | Drives the counter into THRESHOLD saturation to prove the Rust warning event and the clamp. | REQ-FprimeRust-013, REQ-FprimeRust-015, REQ-RustCounter-003, REQ-RustCounter-006 |
+| L6-1 | Sends an invalid limit to prove the Rust handler rejects it with a validation error and changes nothing else. | REQ-FprimeRust-012, REQ-FprimeRust-013, REQ-RustMonitor-002, REQ-RustMonitor-006 |
+| L7-1 | Saves THRESHOLD 42 into the parameter file, downlinks the file and resets the counter to leave the deployment in an independently verifiable state. | REQ-FprimeRust-010, REQ-FprimeRust-011, REQ-FprimeRust-015, REQ-RustCounter-001, REQ-RustCounter-004, REQ-RustCounter-007, REQ-Relay-001, REQ-Relay-002, REQ-RustMonitor-003 |
 <!-- fth:tests:end -->
+
+## Unit-test list
+
+| Test | Description | Requirements |
+|---|---|---|
+| UT-RC-1 | RESET after BUMP(5): `ResetIssued`, `Counter` 0, `countOut(0)`, response OK | REQ-RustCounter-001, REQ-RustCounter-004 |
+| UT-RC-2 | THRESHOLD 10: BUMP(4) → `Bumped(4)`; BUMP(6) → `Bumped(10)` (equality); BUMP(1) → `Saturated(10, 10)`, counter 10; BUMP(0) → `Bumped(10)` | REQ-RustCounter-002, REQ-RustCounter-003 |
+| UT-RC-3 | counter 1, BUMP(4294967295) → `Saturated(100, 100)`, no panic | REQ-RustCounter-003 |
+| UT-RC-4 | THRESHOLD set to 3 while counter is 5: next BUMP(1) → `Saturated(3, 3)`, counter 3 | REQ-RustCounter-006 |
+| UT-RC-5 | three `tick` calls: `TickCount` 1, 2, 3 and `Counter` written each time; no `countOut` | REQ-RustCounter-005 |
