@@ -3,5 +3,5 @@
 	url = https://github.com/nasa/fprime.git
 [submodule "lib/fprime-rust"]
 	path = lib/fprime-rust
-	url = https://github.com/JPL-Devin/fprime-rust.git
-	branch = devin/1778113254-initial-import
+	url = https://github.com/lestarch-autobot/fprime-rust.git
+	branch = main
