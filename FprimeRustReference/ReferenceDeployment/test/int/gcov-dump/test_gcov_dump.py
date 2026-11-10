@@ -7,7 +7,7 @@ CHUNKS = 8          # chunks per window (two events fit one downlink frame; coun
 MAX_WINDOWS = 120   # 120 * 8 * 32 B = 30 KiB of gcda; the twin holds ~18 KiB
 
 
-def test_D_1_coverage_dump(bench, window, send, check, require):
+def test_D_1(bench, window, send, check, require):
     with window(1, 2):
         check("event rustTester.CoverageRejected count == 0")        # declared first: judged at window close from the record
         check("event rustTester.CoverageUnavailable count == 0")
