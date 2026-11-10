@@ -7,7 +7,9 @@ module CdhCoreConfig {
         # 20: a Rust queued component draining its 10-deep queue answers up to 10 commands in one burst, and the
         # dispatcher must hold those responses plus the dispatches in flight (reference override, DEVELOPMENT iteration 2)
         constant cmdDisp     = 20
-        constant events      = 10
+        # 40: one RustTester DUMP_COVERAGE window is at most 8 CoverageChunk + 8 CoverageObject + 1 CoverageDumpDone
+        # = 17 events in one burst, and the EventManager queue drops on overflow (re-entry, design review item 1)
+        constant events      = 40
         constant tlmSend     = 10
         constant $health     = 25
     }

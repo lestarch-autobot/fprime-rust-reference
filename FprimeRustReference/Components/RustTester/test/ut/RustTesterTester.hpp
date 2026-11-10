@@ -59,6 +59,12 @@ class RustTesterTester final : public RustTesterGTestBase {
     //! UT-RT-6: count = 0 zeroes the counters (arc counters of the next dump are zero) and responds OK
     void zeroResetsCounters();
 
+    //! UT-RT-7: crc32 known answer (CRC-32/IEEE check value)
+    void crc32KnownAnswer();
+
+    //! UT-RT-8: white-box paging of an injected snapshot (every build)
+    void injectedSnapshotWindows();
+
   private:
     // ----------------------------------------------------------------------
     // Helpers

@@ -26,3 +26,8 @@ register_fprime_ut(
         STest
     UT_AUTO_HELPERS
 )
+# coverage twin UT cache: the test executable (autocode + tester) joins the gcov information section, so the
+# instrumented unit tests have counters that move (MARK dispatch) and reset
+if (TARGET "${FPRIME_CURRENT_MODULE}_ut_exe")
+    fprime_rust_reference_instrument("${FPRIME_CURRENT_MODULE}_ut_exe")
+endif()

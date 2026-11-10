@@ -22,8 +22,9 @@
 #endif
 struct gcov_info;
 extern "C" {
-extern const struct gcov_info* const __start_gcov_info[] __attribute__((weak));
-extern const struct gcov_info* const __stop_gcov_info[] __attribute__((weak));
+// the entries point at writable libgcov records (__gcov_init links them through info->next)
+extern struct gcov_info* const __start_gcov_info[] __attribute__((weak));
+extern struct gcov_info* const __stop_gcov_info[] __attribute__((weak));
 extern void __gcov_info_to_gcda(const struct gcov_info* info,
                                 void (*filename_fn)(const char*, void*),
                                 void (*dump_fn)(const void*, unsigned, void*),
@@ -41,9 +42,26 @@ namespace FprimeRustReference {
 // out-of-class definitions: the constants are odr-used (passed by reference in the unit tests)
 const U8 RustTester::MAX_CHUNKS_PER_WINDOW;
 const U32 RustTester::CHUNK_BYTES;
-const U32 RustTester::SNAPSHOT_BYTES;
-const U32 RustTester::MAX_OBJECTS;
-const U32 RustTester::ARENA_BYTES;
+
+// Snapshot storage, sized by the build and owned by this translation unit so the class layout does not depend on
+// FPRIME_RUST_REFERENCE_COVERAGE (the topology instantiates RustTester from a translation unit without it).
+// One instance per process (asserted in the constructor); the OFF image spends about 1 KiB.
+namespace {
+#if defined(FPRIME_RUST_REFERENCE_COVERAGE) && FPRIME_RUST_REFERENCE_COVERAGE
+const U32 SNAPSHOT_BYTES = 512 * 1024;  // gcda bytes of all instrumented objects (twin)
+const U32 MAX_OBJECTS = 64;             // instrumented translation units (twin)
+const U32 ARENA_BYTES = 16 * 1024;      // libgcov allocate callback scratch (twin)
+#else
+const U32 SNAPSHOT_BYTES = 1024;  // enough for the white-box unit test
+const U32 MAX_OBJECTS = 4;
+const U32 ARENA_BYTES = 64;
+#endif
+U8 s_snapshot[SNAPSHOT_BYTES];
+RustTester::ObjectRecord s_objects[MAX_OBJECTS];
+alignas(8) U8 s_arena[ARENA_BYTES];
+}  // namespace
+
+U32 RustTester::s_instances = 0;
 
 // libgcov keeps one process-wide list: register the section's objects exactly once per process, whatever the
 // number of component instances (a second registration would make the list circular and __gcov_reset loop)
@@ -53,20 +71,41 @@ bool RustTester::s_registered = false;
 // Component construction and destruction
 // ----------------------------------------------------------------------
 
-RustTester ::RustTester(const char* const compName)
+RUST_TESTER_NO_PROFILE RustTester ::RustTester(const char* const compName)
     : RustTesterComponentBase(compName),
+      m_snapshot(s_snapshot),
+      m_objects(s_objects),
       m_objectCount(0),
       m_snapshotBytes(0),
       m_snapshotCrc(0),
       m_snapshotValid(false),
       m_snapshotOverflow(false),
-      m_arenaUsed(0) {}
+      m_arena(s_arena),
+      m_arenaUsed(0) {
+    RustTester::s_instances++;
+    FW_ASSERT(RustTester::s_instances == 1, static_cast<FwAssertArgType>(RustTester::s_instances));
+}
 
-RustTester ::~RustTester() {}
+RUST_TESTER_NO_PROFILE RustTester ::~RustTester() {
+    RustTester::s_instances--;
+}
+
+RUST_TESTER_NO_PROFILE U32 RustTester ::snapshotCapacity() {
+    return SNAPSHOT_BYTES;
+}
+
+RUST_TESTER_NO_PROFILE U32 RustTester ::objectCapacity() {
+    return MAX_OBJECTS;
+}
 
 RUST_TESTER_NO_PROFILE bool RustTester ::coverageAvailable() {
+#if defined(FPRIME_RUST_REFERENCE_COVERAGE) && FPRIME_RUST_REFERENCE_COVERAGE
+    // strong libgcov references: only the section can be empty
+    return (__start_gcov_info != nullptr) && (__start_gcov_info != __stop_gcov_info);
+#else
     return (__start_gcov_info != nullptr) && (__stop_gcov_info != nullptr) && (__gcov_info_to_gcda != nullptr) &&
            (__start_gcov_info != __stop_gcov_info);
+#endif
 }
 
 RUST_TESTER_NO_PROFILE U32 RustTester ::crc32(U32 crc, const U8* data, FwSizeType length) {
@@ -106,16 +145,20 @@ RUST_TESTER_NO_PROFILE void RustTester ::DUMP_COVERAGE_cmdHandler(FwOpcodeType o
     if (count == 0) {
         this->zeroCounters();
         this->m_snapshotValid = false;
+        this->log_ACTIVITY_LO_CoverageReset(
+            static_cast<U32>(__stop_gcov_info - __start_gcov_info));
         this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::OK);
         return;
     }
     if (start == 0) {
         if (!this->takeSnapshot()) {
+            this->log_WARNING_LO_CoverageRejected(RustTester_DumpReject::OVERFLOW);
             this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::EXECUTION_ERROR);
             return;
         }
     } else if (!this->m_snapshotValid) {
         // a window that does not start the walk needs the snapshot a chunk-0 window took
+        this->log_WARNING_LO_CoverageRejected(RustTester_DumpReject::NO_SNAPSHOT);
         this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::EXECUTION_ERROR);
         return;
     }
@@ -189,10 +232,13 @@ RUST_TESTER_NO_PROFILE void RustTester ::zeroCounters() {
     }
     if (!RustTester::s_registered) {
         // -fprofile-info-section skips libgcov's constructor registration; register once so __gcov_reset
-        // reaches every object. Side effect: libgcov's exit destructor then also writes these objects' .gcda
-        // files at process exit (only in images that ever received a count = 0); the harness overwrites them.
-        for (const struct gcov_info* const* it = __start_gcov_info; it != __stop_gcov_info; ++it) {
-            __gcov_init(const_cast<struct gcov_info*>(*it));
+        // reaches every object. Side effect: an image that also links libgcov's exit handler (e.g. the F Prime
+        // UT build with its own --coverage) then writes these objects' .gcda files at process exit.
+        // Only objects compiled through fprime_rust_reference_instrument (info section, no constructor) may be
+        // in this image: a translation unit instrumented the ordinary way registers itself and a second
+        // registration here would make libgcov's list circular.
+        for (struct gcov_info* const* it = __start_gcov_info; it != __stop_gcov_info; ++it) {
+            __gcov_init(*it);
         }
         RustTester::s_registered = true;
     }
@@ -223,11 +269,14 @@ RUST_TESTER_NO_PROFILE void RustTester ::dumpCallback(const void* data, unsigned
 RUST_TESTER_NO_PROFILE void* RustTester ::allocateCallback(unsigned length, void* arg) {
     FW_ASSERT(arg != nullptr);
     RustTester* const self = static_cast<RustTester*>(arg);
-    // 8-byte aligned bump allocation from the static arena; libgcov only asks for top-n counter scratch
+    // 8-byte aligned bump allocation from the arena (alignas(8) member, reset per object). libgcov asks only
+    // for top-n counter scratch, which -fprofile-arcs -ftest-coverage never emit, and caches the one block it
+    // gets in a static, so a single request per object is the invariant; bound before rounding (no wrap).
+    const U32 free = ARENA_BYTES - self->m_arenaUsed;
+    FW_ASSERT(static_cast<U32>(length) <= free, static_cast<FwAssertArgType>(length));
     const U32 aligned = (static_cast<U32>(length) + 7U) & ~7U;
-    FW_ASSERT(aligned <= ARENA_BYTES - self->m_arenaUsed, static_cast<FwAssertArgType>(length));
     void* const block = &self->m_arena[self->m_arenaUsed];
-    self->m_arenaUsed += aligned;
+    self->m_arenaUsed += (aligned <= free) ? aligned : free;
     return block;
 }
 

@@ -12,6 +12,8 @@ TEST(Nominal, UT_RT_3_uninstrumentedResponds) { FprimeRustReference::RustTesterT
 TEST(Nominal, UT_RT_4_pagedWindowsReassemble) { FprimeRustReference::RustTesterTester().pagedWindowsReassemble(); }
 TEST(Nominal, UT_RT_5_windowWithoutSnapshotRejected) { FprimeRustReference::RustTesterTester().windowWithoutSnapshotRejected(); }
 TEST(Nominal, UT_RT_6_zeroResetsCounters) { FprimeRustReference::RustTesterTester().zeroResetsCounters(); }
+TEST(Nominal, UT_RT_7_crc32KnownAnswer) { FprimeRustReference::RustTesterTester().crc32KnownAnswer(); }
+TEST(Nominal, UT_RT_8_injectedSnapshotWindows) { FprimeRustReference::RustTesterTester().injectedSnapshotWindows(); }
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

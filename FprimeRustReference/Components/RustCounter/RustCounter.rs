@@ -11,10 +11,15 @@ pub struct RustCounter {
 
 impl RustCounter {
     /// Publish the counter and send it on `countOut` (REQ-RustCounter-004)
-    fn report(&self, ctx: &mut Context<'_>) {
+    /// Every `Counter` sample carries the validity of THRESHOLD as the handler read it (REQ-RustCounter-007)
+    fn report_counter(&self, ctx: &mut Context<'_>) {
         ctx.tlmWrite_Counter(self.counter);
         let (_threshold, valid) = ctx.paramGet_THRESHOLD();
         ctx.tlmWrite_ThresholdValid(valid);
+    }
+
+    fn report(&self, ctx: &mut Context<'_>) {
+        self.report_counter(ctx);
         ctx.countOut_out(0, self.counter);
     }
 }
@@ -28,7 +33,7 @@ impl Component for RustCounter {
         let _ = (port_num, context);
         self.tick_count = self.tick_count.wrapping_add(1);
         ctx.tlmWrite_TickCount(self.tick_count);
-        ctx.tlmWrite_Counter(self.counter);
+        self.report_counter(ctx);
     }
 
     fn RESET_cmd_handler(&mut self, ctx: &mut Context<'_>) -> CmdResponse {

@@ -38,3 +38,62 @@ plan edits are design amendments carried by the DEVELOPMENT child.
 | iteration-2 architecture suggestion: SDD called `hook` "the safe queue-full policy" while the generated port-hook stub drops silently | architecture | fixed: wording qualified (non-blocking; the user's hook must report the loss) |
 | iteration-2 correctness C2-1: `FPRIME_RUST_NATIVE_LIBS` docstring said "linked after the Rust archive" while the link line places them before the archive (harmless on glibc) | correctness | fixed: docstring corrected; ordering unchanged (preexisting, g++ re-adds the libc set) |
 | iteration-2 security (future work / design, pre-existing): a full RustMonitor drain emits 10 `cmdResponse_out` in ~100 µs and overflowed `CdhCore.cmdDisp`'s 10-deep queue in 1 of 3 paced runs (`CommandDispatcherComponentAc.cpp:1132`) | security | fixed in the reference (same finding as the development bench row above): `CdhCoreConfig.QueueSizes.cmdDisp = 20`; F1 and F2 of iteration 1 re-verified fixed by the reviewer (bench BUSY ×2, Miri clean on the tip) |
+
+## DEVELOPMENT step 8 re-entry (D1–D4): local delta review, four lenses
+
+Delta reviewed: UUT 9ecd1f9..campaign/dev (fixtures, runtime-enum generator fix) and reference c069f0e..campaign/dev
+(RustTester, coverage twin, RustCounter `ThresholdValid`). Local only; nothing posted. must-fix = fixed unless noted.
+
+### Design lens (No-Go → fixed)
+1. Window cap derived from the wrong queue (events queue 10, drop policy): FIXED — `CdhCoreConfig.QueueSizes.events = 40`
+   (17-event worst case documented in the RustTester SDD); plan delta: check `EventsDropped` in the dump plan.
+2. REQ-RustTester-007 false (autocode instrumented, ctor/dtor not attributed): FIXED — requirement narrowed to the
+   hand-written `RustTester.cpp` (REQ-011), ctor/dtor attributed, SDD states the autocode is instrumented and counted
+   with the third gcovr filter — harness autocode in the judged figure, flagged for anchor ratification.
+3. Integration-test traceability ahead of the plan: FIXED — RustTester/RustCounter-007 verification cells trimmed to
+   `Unit Test`; the plan deltas are reported to the harness child as text (test/int is not this child's scope).
+4. REQ-RustCounter-007 vs tick: FIXED — `tick_handler` publishes `ThresholdValid` with `Counter` too; telemetry table.
+5. CPP-37 silent reset/rejections: FIXED — `CoverageReset(objects)` id 5, `CoverageRejected(reason: DumpReject)` id 6
+   (`NO_SNAPSHOT`, `OVERFLOW`); requirements/UT-RT-5/6 updated. Contract events untouched.
+6. Repeated-window identity untested: FIXED — UT-RT-4 re-reads a window after 50 `MARK`s.
+7. Snapshot overflow without requirement: FIXED — REQ-RustTester-007 (Inspection).
+8. SDD shape: FIXED — `ID | Requirement | Verification`, one sentence per row, cells `Unit Test`/`Inspection`, no-ports line.
+9. GCC floor reason: FIXED — the five-argument `__gcov_info_to_gcda` is GCC ≥ 12; host GCC 11 libgcov lacks it.
+10. "static 512 KiB" / `-Waddress`: FIXED — member wording, `coverageAvailable()` under `#if`.
+11. `CmdResponse` repr type: FIXED (see correctness 1).
+12. fth exclude option: future work (harness). 13. `.gcda` merge at exit: FIXED in the SDD (delete before a run).
+
+### F Prime code lens (No-Go → fixed)
+1. `Fw.CmdResponse : U8`, `CLEARED`/`DISPATCHED_UNTRACKED`: FIXED — `repr() -> u8`, `from_repr(u8)`, both variants;
+   `tests/test_cli.py` CmdResponse case; `ActiveFix` fixture gains `T_RESP: Fw.CmdResponse` so the mapping compiles in
+   `fprime-util check` (UUT non-fixture change, reported).
+2. Template default for runtime enums (`ParamValid::UNINIT`): FIXED — `EnumInfo.variant_name()` (UpperCamel for
+   runtime enums) + `test_runtime_enum_defaults_use_runtime_variant_names`.
+3. UT-RT-6 could pass with a no-op zero: FIXED — walk 1, zero, walk A, zero, walk B: A == B, A ≤ walk 1, CRC differs.
+4. Reset/rejection events: FIXED (design 5). 5. Queue bound: FIXED (design 1). 6. No-profile constraint vs autocode:
+   doc waiver (design 2); compiling the Ac with `-fno-profile-arcs` not done — the UT twin instruments the test
+   executable on purpose so UT-RT-4..6 have moving counters.
+7. White-box tests in the default build: FIXED — `friend class RustTesterTester`, UT-RT-7 (crc32 KAT), UT-RT-8
+   (injected snapshot: packing, padding, 32-multiple object, Done).
+8. Oracle on object boundaries: FIXED (scan all `CoverageObject` events). 9. Uninitialised locals / narrowing /
+   `nameCrc`: FIXED. 10. `alignas(8) m_arena`: FIXED. 11. SDD exit-write contradiction: FIXED.
+12. REQ-RustCounter-007 wording/table: FIXED. 13. ActiveFix trace: FIXED (REQ-FprimeRust-006); UT-SHIM rows in the
+   UUT SDD and a non-zero drop case: not done (outside tests/project; non-drop ports assert on overflow in a UT).
+14. GNU ≥ 12 check / CI twin job: future work.
+
+### Correctness lens (No-Go → fixed)
+1. `CmdResponse` repr/u8 + variants: FIXED (code lens 1). 2. walkAll boundary oracle: FIXED (code lens 8).
+3. crc32 KAT + `nameCrc != 0`: FIXED (UT-RT-7, walkAll). 4. UT-RT-5 proves invalidation: FIXED (window served before
+   the zero, rejected after). 5. `RUST_TESTER_NO_PROFILE` unconditional: declined — harmless in OFF (no profile
+   flags), and the F Prime UT coverage figure of harness code is not a judged metric. 6. Re-snapshot on every
+   `start = 0`: declined — a stale snapshot would silently serve old counters; SDD now forbids retrying window 0
+   mid-walk. 7. Exit-time `.gcda`: FIXED (“may write”, only with libgcov's exit handler linked).
+8. Fixture with runtime-enum types: FIXED (ActiveFix `T_RESP`). 9. DEFER ordering note: FIXED (function header).
+
+### Security lens (Go, with 1)
+1. `m_arena` alignment: FIXED (`alignas(8)`). 2. Arena bound before rounding, single-allocation invariant: FIXED.
+3. Burst vs events queue: FIXED (design 1). 4. 530 KiB `.bss` in the OFF image: FIXED — OFF keeps 1 KiB / 4 objects /
+   64 B (enough for UT-RT-8). 5. False `const` on the section entries + registration discipline: FIXED (`struct
+   gcov_info* const []`, no `const_cast`, comment). 6. `-fprofile-update=atomic`: future work (SDD notes the tearing).
+7. Null `__gcov_init`/`__gcov_reset` in a mixed image: future work (unreachable with strong references in ON).
+8. Lenient `from_code` vs strict `from_repr`: future work (documented FFI boundary is `code`/`from_code`).

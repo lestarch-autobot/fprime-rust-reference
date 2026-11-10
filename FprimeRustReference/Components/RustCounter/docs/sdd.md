@@ -17,10 +17,10 @@ end to end in the reference deployment.
 | REQ-RustCounter-004 | Every RESET or BUMP shall publish `Counter` and send it on `countOut`, changed or not. | Unit Test; Integration Test: L2-1, L2-3, L7-1 |
 | REQ-RustCounter-005 | Each `tick` shall increment `TickCount` and publish `TickCount` and `Counter`. | Unit Test; Integration Test: L2-4, L4-1 |
 | REQ-RustCounter-006 | A THRESHOLD update shall take effect on the next BUMP. | Unit Test; Integration Test: L2-2, L5-1 |
-| REQ-RustCounter-007 | RustCounter shall report the validity of THRESHOLD as read by its handler (`ThresholdValid`) with every `Counter` report. | Unit Test; Integration Test: L2-2, L5-1 |
+| REQ-RustCounter-007 | RustCounter shall publish `ThresholdValid`, the validity of THRESHOLD as read by its handler, with every `Counter` sample (RESET, BUMP and tick). | Unit Test |
 
 Command table (REQ-RustCounter-001..003): `RESET`, `BUMP(amount: U32, 0..=4294967295)`. Event table:
-`ResetIssued`, `Bumped(value)`, `Saturated(value, threshold)`. Telemetry table: `Counter`, `TickCount`.
+`ResetIssued`, `Bumped(value)`, `Saturated(value, threshold)`. Telemetry table: `Counter`, `TickCount`, `ThresholdValid`.
 Parameter table: `THRESHOLD` (U32, 0..=4294967295, default 100; 0 pins the counter at 0). `THRESHOLD_PRM_SET/SAVE`
 and persistence in `PrmDb.dat` are owned by the autocoded parameter base and `Svc.PrmDb` (plan decision log 11); L7-1
 uses them as final-state evidence, not as a RustCounter requirement.
@@ -56,6 +56,7 @@ uses them as final-state evidence, not as a RustCounter requirement.
 |---|---|---|
 | Counter | U32 | every RESET/BUMP and every tick |
 | TickCount | U32 | every tick (wraps at U32::MAX) |
+| ThresholdValid | Fw.ParamValid | with every `Counter` sample: DEFAULT until THRESHOLD is set, VALID after `THRESHOLD_PRM_SET` (id 2) |
 
 | Parameter | Type | Default |
 |---|---|---|

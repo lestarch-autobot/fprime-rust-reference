@@ -5,6 +5,16 @@ module FprimeRustReference {
   passive component RustTester {
 
     # ----------------------------------------------------------------------
+    # Types
+    # ----------------------------------------------------------------------
+
+    @ Why a DUMP_COVERAGE window was rejected
+    enum DumpReject {
+      NO_SNAPSHOT @< start > 0 but no chunk-0 window took a snapshot since the last reset
+      OVERFLOW @< the gcda stream does not fit the snapshot buffer or the object table
+    }
+
+    # ----------------------------------------------------------------------
     # Special ports
     # ----------------------------------------------------------------------
 
@@ -73,6 +83,16 @@ module FprimeRustReference {
 
     @ The image was built without FPRIME_RUST_REFERENCE_COVERAGE: no gcov information section
     event CoverageUnavailable severity warning low id 4 format "coverage not compiled into this image"
+
+    @ DUMP_COVERAGE(start, 0): the arc counters of every instrumented object were zeroed
+    event CoverageReset(
+      objects: U32 @< Instrumented objects in the gcov information section
+    ) severity activity low id 5 format "coverage counters zeroed: {} objects"
+
+    @ A window was rejected (EXECUTION_ERROR) and why
+    event CoverageRejected(
+      reason: DumpReject @< Rejection reason
+    ) severity warning low id 6 format "coverage dump rejected: {}"
 
   }
 

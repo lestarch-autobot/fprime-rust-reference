@@ -46,7 +46,7 @@ void RustTesterTester ::windowTooLargeRejected() {
     REQUIREMENT("REQ-RustTester-005");
     COMMENT("UT-RT-2: DUMP_COVERAGE(0, 9) is a VALIDATION_ERROR and emits nothing");
     this->clearHistory();
-    this->dump(0, RustTester::MAX_CHUNKS_PER_WINDOW + 1, Fw::CmdResponse::VALIDATION_ERROR);
+    this->dump(0, static_cast<U8>(RustTester::MAX_CHUNKS_PER_WINDOW + 1), Fw::CmdResponse::VALIDATION_ERROR);
     ASSERT_EVENTS_SIZE(0);
 }
 
@@ -69,7 +69,8 @@ void RustTesterTester ::pagedWindowsReassemble() {
     REQUIREMENT("REQ-RustTester-002");
     REQUIREMENT("REQ-RustTester-003");
     COMMENT("UT-RT-4: windows of 8 from chunk 0 to Done: per-object byte counts match the chunk lengths, the Done "
-            "CRC equals the CRC-32 over all chunk bytes, and a repeated walk is byte-identical (snapshot)");
+            "CRC equals the CRC-32 over all chunk bytes, and a window repeated after 50 MARKs is byte-identical "
+            "(snapshot)");
     if (!RustTester::coverageAvailable()) {
         GTEST_SKIP() << "built without FPRIME_RUST_REFERENCE_COVERAGE: no gcov information section";
     }
@@ -79,8 +80,36 @@ void RustTesterTester ::pagedWindowsReassemble() {
     U32 crcOfChunks = 0;
     const U32 chunks = this->walkAll(objects, totalBytes, crc, crcOfChunks);
     ASSERT_GT(objects, 0U);
-    ASSERT_GT(chunks, 0U);
+    ASSERT_GE(chunks, 2U);
     ASSERT_EQ(crc, crcOfChunks);
+    // the snapshot makes a repeated window byte-identical even though instrumented code (this component's
+    // autocode, driven by MARK) ran in between
+    const U16 again = static_cast<U16>(chunks / 2);
+    this->clearHistory();
+    this->dump(again, RustTester::MAX_CHUNKS_PER_WINDOW, Fw::CmdResponse::OK);
+    const FwSizeType repeatChunks = this->eventHistory_CoverageChunk->size();
+    ASSERT_GT(repeatChunks, 0U);
+    U32 first[RustTester::MAX_CHUNKS_PER_WINDOW][8];
+    for (FwSizeType i = 0; i < repeatChunks; i++) {
+        const EventEntry_CoverageChunk& e = this->eventHistory_CoverageChunk->at(i);
+        const U32 words[8] = {e.data0, e.data1, e.data2, e.data3, e.data4, e.data5, e.data6, e.data7};
+        for (U32 w = 0; w < 8; w++) {
+            first[i][w] = words[w];
+        }
+    }
+    for (U32 i = 0; i < 50; i++) {
+        this->sendCmd_MARK(0, 1000 + i, i);
+    }
+    this->clearHistory();
+    this->dump(again, RustTester::MAX_CHUNKS_PER_WINDOW, Fw::CmdResponse::OK);
+    ASSERT_EQ(this->eventHistory_CoverageChunk->size(), repeatChunks);
+    for (FwSizeType i = 0; i < repeatChunks; i++) {
+        const EventEntry_CoverageChunk& e = this->eventHistory_CoverageChunk->at(i);
+        const U32 words[8] = {e.data0, e.data1, e.data2, e.data3, e.data4, e.data5, e.data6, e.data7};
+        for (U32 w = 0; w < 8; w++) {
+            EXPECT_EQ(words[w], first[i][w]) << "chunk " << i << " word " << w;
+        }
+    }
     // the window past the end answers Done again, nothing else
     this->clearHistory();
     this->dump(static_cast<U16>(chunks), 8, Fw::CmdResponse::OK);
@@ -91,35 +120,117 @@ void RustTesterTester ::pagedWindowsReassemble() {
 
 void RustTesterTester ::windowWithoutSnapshotRejected() {
     REQUIREMENT("REQ-RustTester-003");
-    COMMENT("UT-RT-5: after count = 0 the snapshot is gone: DUMP_COVERAGE(1, 8) is an EXECUTION_ERROR without events");
+    COMMENT("UT-RT-5: with a snapshot (0, 8) a window (1, 8) is served; count = 0 emits CoverageReset and drops it: "
+            "(1, 8) is then an EXECUTION_ERROR with CoverageRejected(NO_SNAPSHOT)");
     if (!RustTester::coverageAvailable()) {
         GTEST_SKIP() << "built without FPRIME_RUST_REFERENCE_COVERAGE: no gcov information section";
     }
+    // a snapshot exists: a later window is served
+    this->clearHistory();
+    this->dump(0, 8, Fw::CmdResponse::OK);
+    this->clearHistory();
+    this->dump(1, 8, Fw::CmdResponse::OK);
+    ASSERT_EVENTS_CoverageRejected_SIZE(0);
+    // zeroing drops it
     this->clearHistory();
     this->dump(0, 0, Fw::CmdResponse::OK);
+    ASSERT_EVENTS_SIZE(1);
+    ASSERT_EVENTS_CoverageReset_SIZE(1);
+    this->clearHistory();
     this->dump(1, 8, Fw::CmdResponse::EXECUTION_ERROR);
-    ASSERT_EVENTS_SIZE(0);
+    ASSERT_EVENTS_SIZE(1);
+    ASSERT_EVENTS_CoverageRejected_SIZE(1);
+    ASSERT_EVENTS_CoverageRejected(0, RustTester_DumpReject::NO_SNAPSHOT);
 }
 
 void RustTesterTester ::zeroResetsCounters() {
-    REQUIREMENT("REQ-RustTester-006");
-    COMMENT("UT-RT-6: a walk, then count = 0, then a walk: same objects, a stream no longer than before (libgcov "
-            "omits all-zero counter records) and a different CRC because the arc counters are zero");
+    REQUIREMENT("REQ-RustTester-010");
+    COMMENT("UT-RT-6: walk 1 (counters of everything run so far), zero, walk A, zero, walk B: A and B are shorter "
+            "than walk 1 (zeroed counters are omitted from the stream) and differ from it; CoverageReset each time");
     if (!RustTester::coverageAvailable()) {
         GTEST_SKIP() << "built without FPRIME_RUST_REFERENCE_COVERAGE: no gcov information section";
     }
-    U32 objects1, bytes1, crc1, chunksCrc1;
+    U32 objects1 = 0, bytes1 = 0, crc1 = 0, chunksCrc1 = 0;
     (void)this->walkAll(objects1, bytes1, crc1, chunksCrc1);
     this->clearHistory();
     this->dump(0, 0, Fw::CmdResponse::OK);
-    ASSERT_EVENTS_SIZE(0);
-    U32 objects2, bytes2, crc2, chunksCrc2;
-    (void)this->walkAll(objects2, bytes2, crc2, chunksCrc2);
-    ASSERT_EQ(objects1, objects2);
-    ASSERT_LE(bytes2, bytes1);
-    // this tester's own instrumented code ran between the walks: the first stream counted it, the zeroed one counts
-    // only what ran after the reset (the walk itself is not instrumented), so the streams differ
-    ASSERT_NE(crc1, crc2);
+    ASSERT_EVENTS_SIZE(1);
+    ASSERT_EVENTS_CoverageReset(0, objects1);
+    U32 objectsA = 0, bytesA = 0, crcA = 0, chunksCrcA = 0;
+    (void)this->walkAll(objectsA, bytesA, crcA, chunksCrcA);
+    this->clearHistory();
+    this->dump(0, 0, Fw::CmdResponse::OK);
+    ASSERT_EVENTS_CoverageReset_SIZE(1);
+    U32 objectsB = 0, bytesB = 0, crcB = 0, chunksCrcB = 0;
+    (void)this->walkAll(objectsB, bytesB, crcB, chunksCrcB);
+    ASSERT_EQ(objects1, objectsA);
+    ASSERT_EQ(objectsA, objectsB);
+    // the zero empties the counters: every function this process ran before the first zero (all earlier tests)
+    // disappears from the stream (GCC omits all-zero counter records), so A and B are shorter than walk 1 and
+    // differ from it; A and B are not compared byte for byte because the instrumented tester itself runs
+    // between a zero and the next snapshot
+    ASSERT_LT(bytesA, bytes1);
+    ASSERT_LT(bytesB, bytes1);
+    ASSERT_NE(crc1, crcA);
+    ASSERT_NE(crc1, crcB);
+}
+
+void RustTesterTester ::crc32KnownAnswer() {
+    REQUIREMENT("REQ-RustTester-003");
+    REQUIREMENT("REQ-RustTester-004");
+    COMMENT("UT-RT-7: crc32 is CRC-32/IEEE: check value 0xcbf43926 over \"123456789\", continuation equals one pass");
+    const U8 check[9] = {'1', '2', '3', '4', '5', '6', '7', '8', '9'};
+    ASSERT_EQ(RustTester::crc32(0, check, 9), 0xCBF43926U);
+    ASSERT_EQ(RustTester::crc32(RustTester::crc32(0, check, 4), &check[4], 5), 0xCBF43926U);
+    ASSERT_EQ(RustTester::crc32(0, nullptr, 0), 0U);
+}
+
+void RustTesterTester ::injectedSnapshotWindows() {
+    REQUIREMENT("REQ-RustTester-002");
+    REQUIREMENT("REQ-RustTester-003");
+    REQUIREMENT("REQ-RustTester-004");
+    COMMENT("UT-RT-8: white-box, runs in every build: a 40-byte and a 32-byte object are paged as chunks "
+            "(MSB-first words, zero padding, CoverageObject with each last chunk, Done only at the end)");
+    U8* const snap = this->component.m_snapshot;
+    for (U32 i = 0; i < 72; i++) {
+        snap[i] = static_cast<U8>(i + 1);
+    }
+    this->component.m_objectCount = 2;
+    this->component.m_objects[0].offset = 0;
+    this->component.m_objects[0].bytes = 40;
+    this->component.m_objects[0].nameCrc = 0x11111111U;
+    this->component.m_objects[1].offset = 40;
+    this->component.m_objects[1].bytes = 32;
+    this->component.m_objects[1].nameCrc = 0x22222222U;
+    this->component.m_snapshotBytes = 72;
+    this->component.m_snapshotCrc = RustTester::crc32(0, snap, 72);
+    this->component.m_snapshotValid = true;
+    // white-box: emitWindow is driven directly (the OFF image answers CoverageUnavailable at the command)
+    // window 0..1: object 0 chunk 0 (full) and chunk 1 (8 bytes, last)
+    this->clearHistory();
+    this->component.emitWindow(0, 2);
+    ASSERT_EVENTS_CoverageChunk_SIZE(2);
+    ASSERT_EVENTS_CoverageChunk(0, 0, 0, 32, 0x01020304U, 0x05060708U, 0x090A0B0CU, 0x0D0E0F10U, 0x11121314U,
+                                0x15161718U, 0x191A1B1CU, 0x1D1E1F20U);
+    ASSERT_EVENTS_CoverageChunk(1, 0, 32, 8, 0x21222324U, 0x25262728U, 0U, 0U, 0U, 0U, 0U, 0U);
+    ASSERT_EVENTS_CoverageObject_SIZE(1);
+    ASSERT_EVENTS_CoverageObject(0, 0, 0x11111111U, 40);
+    ASSERT_EVENTS_CoverageDumpDone_SIZE(0);
+    // window 2..9: object 1's single chunk (a multiple of 32: last chunk is full), then Done
+    this->clearHistory();
+    this->component.emitWindow(2, 8);
+    ASSERT_EVENTS_CoverageChunk_SIZE(1);
+    ASSERT_EVENTS_CoverageChunk(0, 1, 0, 32, 0x292A2B2CU, 0x2D2E2F30U, 0x31323334U, 0x35363738U, 0x393A3B3CU,
+                                0x3D3E3F40U, 0x41424344U, 0x45464748U);
+    ASSERT_EVENTS_CoverageObject_SIZE(1);
+    ASSERT_EVENTS_CoverageObject(0, 1, 0x22222222U, 32);
+    ASSERT_EVENTS_CoverageDumpDone_SIZE(1);
+    ASSERT_EVENTS_CoverageDumpDone(0, 2, 72, this->component.m_snapshotCrc);
+    // a window entirely past the end: Done only
+    this->clearHistory();
+    this->component.emitWindow(3, 8);
+    ASSERT_EVENTS_SIZE(1);
+    ASSERT_EVENTS_CoverageDumpDone_SIZE(1);
 }
 
 // ----------------------------------------------------------------------
@@ -159,12 +270,12 @@ U32 RustTesterTester ::walkAll(U32& objects, U32& totalBytes, U32& crc, U32& crc
             objectBytes += e.length;
             bytesSeen += e.length;
             chunks++;
-            if (e.length < RustTester::CHUNK_BYTES ||
-                (this->eventHistory_CoverageObject->size() > 0 &&
-                 this->eventHistory_CoverageObject->at(this->eventHistory_CoverageObject->size() - 1).object ==
-                     objectsSeen &&
-                 this->eventHistory_CoverageObject->at(this->eventHistory_CoverageObject->size() - 1).bytes ==
-                     objectBytes)) {
+            bool last = e.length < RustTester::CHUNK_BYTES;
+            for (FwSizeType k = 0; !last && k < this->eventHistory_CoverageObject->size(); k++) {
+                const EventEntry_CoverageObject& o = this->eventHistory_CoverageObject->at(k);
+                last = (o.object == objectsSeen) && (o.bytes == objectBytes);
+            }
+            if (last) {
                 objectsSeen++;
                 objectBytes = 0;
             }
@@ -173,6 +284,7 @@ U32 RustTesterTester ::walkAll(U32& objects, U32& totalBytes, U32& crc, U32& crc
             const EventEntry_CoverageObject& o = this->eventHistory_CoverageObject->at(i);
             EXPECT_LT(o.object, objectsSeen);
             EXPECT_GT(o.bytes, 0U);
+            EXPECT_NE(o.nameCrc, 0U);
         }
         if (this->eventHistory_CoverageDumpDone->size() == 1) {
             const EventEntry_CoverageDumpDone& d = this->eventHistory_CoverageDumpDone->at(0);
