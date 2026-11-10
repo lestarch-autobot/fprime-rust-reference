@@ -3,7 +3,9 @@
 One pytest per plan test, in plan order. Each test sends its stimulus inside ``with window(start, end):``
 and declares the test's named checks there: ``check("<plan predicate>")`` (plan grammar) or
 ``check("<text>", fn)`` for a registered ``@helper`` of ``planted_faults.py`` (the same helper text the
-plan's ``metrics`` carry, so the plan and the stimulus judge the same name). ``require(STD)`` holds the
+plan's ``metrics`` carry are judged by fth at window close by their plan names (A11: the stimulus does not
+re-declare them, a name declared twice is judged twice); the stimulus declares what the plan cannot judge by
+name: completeness (``require``), the ABS group and the helper-bound checks. ``require(STD)`` holds the
 infrastructure preconditions (markers, every command dispatched, >= 2 RustReference samples): not holding
 makes the test UNVERIFIED; a missing UUT event or sample is a FAIL. The checks are judged over the
 record when the window closes (the auditor replays the same functions); waits are pacing only.
@@ -28,7 +30,6 @@ SEND_FILE = "FileHandling.fileDownlink.SendFile"
 SAMPLE = "rustCounter.TickCount"   # one row per 1 Hz RustReference packet: the plan's "bracket (n samples)"
 STD = "STD"                        # plan.json std_complete: both markers, every command dispatched, >= 2 samples
 ABS = "ABS"                        # plan.json abs.ABS: no MalformedCommand / InvalidCommand / TooManyCommands
-NO_OPCODE_ERROR = "event cmdDisp.OpCodeError count == 0"
 U32_MAX = 4294967295
 
 VERSION_EVENTS = ["version.ProjectVersion", "version.FrameworkVersion", "version.LibraryVersions"]
@@ -57,12 +58,8 @@ def test_L0_1(window, send, bench, check, require, fth_plan):
         bench.wait_event("version.LibraryVersions")
         bracket(bench)
         check(ABS)
-        check("event version.ProjectVersion count == 1")
-        check("event version.FrameworkVersion count == 1")
-        check("event version.LibraryVersions count == 1")
         check("version payloads of ProjectVersion, FrameworkVersion, LibraryVersions are non-empty and not UNKNOWN",
               plan_helper(fth_plan, "version_payloads_present", events=VERSION_EVENTS))
-        check(NO_OPCODE_ERROR)
 
 
 def test_L0_2(window, send, bench, check, require):
@@ -76,8 +73,6 @@ def test_L0_2(window, send, bench, check, require):
         bench.wait_event("cmdDisp.NoOpStringReceived")
         bracket(bench)
         check(ABS)
-        check("event cmdDisp.NoOpStringReceived count == 3")
-        check(NO_OPCODE_ERROR)
 
 
 # ---- L2: command, parameter, port chain, rate group, queued component -----------------------
@@ -99,13 +94,6 @@ def test_L2_1(window, send, bench, check, require):
         bench.wait_event("rustCounter.Bumped")
         bracket(bench)
         check(ABS)
-        check("event rustCounter.ResetIssued count == 1")
-        check("event rustCounter.Bumped(value=7) count == 1")
-        check("event rustCounter.Bumped(value=12) count == 1")
-        check("event rustCounter.ResetIssued precedes event rustCounter.Bumped(value=7)")
-        check("last(rustCounter.Counter) == 12")
-        check("event rustCounter.Saturated count == 0")
-        check(NO_OPCODE_ERROR)
 
 
 @pytest.mark.req("REQ-FprimeRust-015", "REQ-RustCounter-003", "REQ-RustCounter-006")
@@ -124,10 +112,6 @@ def test_L2_2(window, send, bench, check, require):
         send(THRESHOLD_SET, [100])
         bracket(bench)
         check(ABS)
-        check("event rustCounter.Saturated(value=5, threshold=5) count == 1")
-        check("last(rustCounter.Counter) == 5")
-        check("event rustCounter.Bumped count == 0")
-        check(NO_OPCODE_ERROR)
 
 
 @pytest.mark.req("REQ-FprimeRust-009", "REQ-FprimeRust-010", "REQ-FprimeRust-011", "REQ-RustCounter-002",
@@ -146,11 +130,7 @@ def test_L2_3(window, send, bench, check, require, fth_plan):
         bench.wait(2.0)
         bracket(bench)
         check(ABS)
-        check("event rustCounter.Bumped(value=3) count == 1")
         check("relay.Relayed advances by 2", plan_helper(fth_plan, "counter_advances", channel="relay.Relayed", by=2))
-        check("last(rustMonitor.LastCount) == 3")
-        check("event rustMonitor.LimitExceeded count == 0")
-        check(NO_OPCODE_ERROR)
 
 
 @pytest.mark.req("REQ-FprimeRust-008", "REQ-FprimeRust-009", "REQ-FprimeRust-011", "REQ-FprimeRust-014",
@@ -167,7 +147,6 @@ def test_L2_4(window, send, bench, check, require, fth_plan):
         check(ABS)
         check("delta(rustCounter.TickCount) in 7..10", plan_helper(fth_plan, "delta_in_range", channel="rustCounter.TickCount", lo=7, hi=10))
         check("delta(rustMonitor.RunCount) in 7..10", plan_helper(fth_plan, "delta_in_range", channel="rustMonitor.RunCount", lo=7, hi=10))
-        check(NO_OPCODE_ERROR)
 
 
 @pytest.mark.req("REQ-FprimeRust-008", "REQ-FprimeRust-012", "REQ-FprimeRust-013", "REQ-RustMonitor-001",
@@ -191,14 +170,7 @@ def test_L2_5(window, send, bench, check, require, fth_plan):
         bench.wait(2.0)
         bracket(bench)
         check(ABS)
-        check("event rustMonitor.LimitSet(limit=4) count == 1")
-        check("event rustMonitor.LimitExceeded(count=10, limit=4) count == 1")
         check("rustMonitor.Exceedances advances by 1", plan_helper(fth_plan, "counter_advances", channel="rustMonitor.Exceedances", by=1))
-        check("last(rustMonitor.LastCount) == 10")
-        check("event rustMonitor.LimitSet count == 2")
-        check("first(rustMonitor.Limit) == 4294967295")
-        check("last(rustMonitor.Limit) == 4294967295")
-        check(NO_OPCODE_ERROR)
 
 
 # ---- L4: endurance ---------------------------------------------------------------------
@@ -216,9 +188,6 @@ def test_L4_1(window, send, bench, check, require, fth_plan):
         check(ABS)
         check("delta(rustCounter.TickCount) in 55..65", plan_helper(fth_plan, "delta_in_range", channel="rustCounter.TickCount", lo=55, hi=65))
         check("delta(rustMonitor.RunCount) in 55..65", plan_helper(fth_plan, "delta_in_range", channel="rustMonitor.RunCount", lo=55, hi=65))
-        check("delta(rustCounter.Counter) == 0")
-        check("event rustCounter.Saturated count == 0")
-        check(NO_OPCODE_ERROR)
 
 
 # ---- L5: saturation fault path ----------------------------------------------------------
@@ -241,11 +210,6 @@ def test_L5_1(window, send, bench, check, require):
         send(THRESHOLD_SET, [100])
         bracket(bench)
         check(ABS)
-        check("event rustCounter.Bumped(value=2) count == 1")
-        check("event rustCounter.Saturated(value=3, threshold=3) count == 1")
-        check("last(rustCounter.Counter) == 3")
-        check("event rustCounter.Bumped(value=2) precedes event rustCounter.Saturated(value=3, threshold=3)")
-        check(NO_OPCODE_ERROR)
 
 
 # ---- L6: negative control ----------------------------------------------------------------
@@ -263,13 +227,7 @@ def test_L6_1(window, send, bench, check, require, fth_plan):
         bench.wait(2.0)
         bracket(bench)
         check(ABS)
-        check("event rustMonitor.InvalidLimit(limit=0) count == 1")
-        check("event cmdDisp.OpCodeError(error=VALIDATION_ERROR) count == 1")
-        check("event rustMonitor.LimitSet count == 0")
-        check("delta(rustMonitor.Limit) == 0")
-        check("last(rustMonitor.Limit) == 4294967295")
         check("rustMonitor.Exceedances advances by 0", plan_helper(fth_plan, "counter_advances", channel="rustMonitor.Exceedances", by=0))
-        check("event rustCounter.Bumped count == 0")
 
 
 # ---- L7: final state ---------------------------------------------------------------------
@@ -294,12 +252,6 @@ def test_L7_1(window, send, bench, check, require, fth_plan):
         bench.wait_event("rustCounter.ResetIssued")
         bracket(bench)
         check(ABS)
-        check("event prmDb.PrmFileSaveComplete(records=1) count == 1")
-        check("event fileDownlink.FileSent count == 1")
         check("PrmDb.dat record 0x10016000 == 42",
               plan_helper(fth_plan, "prmdb_record_equals", path="files/fprime-downlink/PrmDb.dat", id=0x10016000, value=42))
-        check("event rustCounter.ResetIssued count == 1")
-        check("last(rustCounter.Counter) == 0")
-        check("last(rustMonitor.LastCount) == 0")
         check("relay.Relayed advances by 1", plan_helper(fth_plan, "counter_advances", channel="relay.Relayed", by=1))
-        check(NO_OPCODE_ERROR)
