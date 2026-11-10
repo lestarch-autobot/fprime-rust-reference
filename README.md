@@ -1,9 +1,10 @@
 # fprime-rust-reference
 
 Reference deployment that demonstrates the
-[`fprime-rust`](https://github.com/JPL-Devin/fprime-rust) autocoder by
-hosting a Rust-backed component (`RustExample`) inside a standard F Prime
-topology.  The structure mirrors
+[`fprime-rust`](https://github.com/lestarch-autobot/fprime-rust) autocoder by
+hosting two Rust components (`RustCounter`, a passive counter with RESET/BUMP commands and a
+`THRESHOLD` parameter; `RustMonitor`, a queued limit monitor with SET_LIMIT) and a C++ `Relay`
+between them inside a standard F Prime topology.  The structure mirrors
 [`fprime-python-reference`](https://github.com/fprime-community/fprime-python-reference):
 
 ```
@@ -12,19 +13,21 @@ fprime-rust-reference/
 ├── settings.ini                # framework_path + library_locations
 ├── lib/
 │   ├── fprime/                 # submodule  -> github.com/nasa/fprime
-│   └── fprime-rust/            # submodule  -> github.com/JPL-Devin/fprime-rust
+│   └── fprime-rust/            # submodule  -> github.com/lestarch-autobot/fprime-rust
 ├── FprimeRustReference/
 │   ├── Components/             # project-specific components
-│   │   ├── RustExample/        # the demo Rust component
-│   │   └── ...                 # additional reference components
+│   │   ├── RustCounter/        # passive Rust component (RustCounter.rs)
+│   │   ├── RustMonitor/        # queued Rust component (RustMonitor.rs)
+│   │   └── Relay/              # C++ component forwarding counts to the monitor
 │   └── ReferenceDeployment/    # topology + Main.cpp
+├── bench/                      # native_flash.py / native_dump.py for the test bench
 └── requirements.txt
 ```
 
 ## Quick start
 
 ```bash
-git clone --recurse-submodules https://github.com/JPL-Devin/fprime-rust-reference.git
+git clone --recurse-submodules https://github.com/lestarch-autobot/fprime-rust-reference.git
 cd fprime-rust-reference
 
 # 1. Set up an F Prime venv and install fprime-rust
@@ -40,25 +43,28 @@ fprime-util build -j$(nproc)
 fprime-gds --gui none &                                          # one terminal
 ./build-artifacts/Linux/FprimeRustReference/bin/FprimeRustReference  # another terminal
 
-# 4. Talk to the Rust component
-fprime-cli command-send FprimeRustReference.rustExample.Reset
-fprime-cli command-send FprimeRustReference.rustExample.Bump --arguments 7
-fprime-cli channels    # observe FprimeRustReference.rustExample.Counter
+# 4. Talk to the Rust components
+fprime-cli command-send FprimeRustReference.rustCounter.RESET
+fprime-cli command-send FprimeRustReference.rustCounter.BUMP --arguments 7
+fprime-cli command-send FprimeRustReference.rustMonitor.SET_LIMIT --arguments 4
+fprime-cli channels    # Counter, TickCount, Limit, LastCount, Exceedances, Relayed
 ```
 
-## What's in `RustExample`?
+## What's in a Rust component?
 
 ```
-FprimeRustReference/Components/RustExample/
-├── RustExample.fpp        # FPP model — annotated `@ fprime-rust`
-├── RustExample.rs         # User-authored Rust handlers
-└── CMakeLists.txt         # register_fprime_module(...)
+FprimeRustReference/Components/RustCounter/
+├── RustCounter.fpp        # FPP model — annotated `@ fprime-rust`
+├── RustCounter.rs         # User-authored Rust handlers (impl Component for RustCounter)
+├── docs/sdd.md            # design + unit-test list
+├── test/ut/               # GTest unit tests over the generated shim (fprime-util check)
+└── CMakeLists.txt         # register_fprime_module(... SOURCES RustCounter.rs)
 ```
 
-The autocoder regenerates the C++ shim and per-component Cargo workspace
-on every build.  See the
-[`fprime-rust` README](https://github.com/JPL-Devin/fprime-rust) for the
-full design.
+Each build regenerates the C++ shim, the Rust base module (`rustcounter_base.rs`) and a
+`RustCounter.template.rs` next to the user file; all Rust components of the deployment are
+linked from one `libfprime_rust_<Deployment>.a`. See the
+[`fprime-rust` README](https://github.com/lestarch-autobot/fprime-rust) for the full design.
 
 ## License
 
