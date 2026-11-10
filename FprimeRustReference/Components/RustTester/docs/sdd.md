@@ -14,13 +14,15 @@ recognises and pages the gcov counters of the instrumented twin image (§3a) bac
 | REQ-RustTester-002 | `DUMP_COVERAGE(start, count)` with `1 <= count <= 8` shall emit the global 32-byte gcda chunks `start..start+count-1` as `CoverageChunk(object, offset, length, data0..data7)`, bytes MSB-first and zero padded. | Unit Test |
 | REQ-RustTester-003 | With an object's last chunk `DUMP_COVERAGE` shall emit `CoverageObject(object, nameCrc, bytes)`, `nameCrc` the CRC-32/IEEE of the compiler's `.gcda` path. | Unit Test |
 | REQ-RustTester-004 | When a window reaches the end of the stream `DUMP_COVERAGE` shall emit `CoverageDumpDone(objects, totalBytes, crc)`, `crc` the CRC-32 over all gcda bytes in object order. | Unit Test |
-| REQ-RustTester-005 | A window with `start = 0` shall snapshot the whole gcda stream; later windows shall read that snapshot, so every window of one walk describes the same counter state. | Unit Test |
+| REQ-RustTester-005 | A window with `start = 0` shall flush the counters (libgcov dump + reset) and snapshot the on-disk `.gcda` file of every instrumented object; later windows shall read that snapshot, so every window of one walk describes the same counter state. | Unit Test |
 | REQ-RustTester-006 | A window with `start > 0` and no snapshot shall emit `CoverageRejected(NO_SNAPSHOT)` and respond `EXECUTION_ERROR`. | Unit Test |
-| REQ-RustTester-007 | A stream that does not fit the snapshot buffer or the object table shall emit `CoverageRejected(OVERFLOW)` and respond `EXECUTION_ERROR`. | Inspection |
+| REQ-RustTester-007 | A stream that does not fit the snapshot buffer or the object table shall emit `CoverageRejected(OVERFLOW)`, an unreadable `.gcda` file `CoverageRejected(FILE_ERROR)`, each with `EXECUTION_ERROR`. | Inspection |
 | REQ-RustTester-008 | In an image built without `FPRIME_RUST_REFERENCE_COVERAGE`, `DUMP_COVERAGE` shall emit `CoverageUnavailable` and respond `OK`. | Unit Test |
 | REQ-RustTester-009 | `DUMP_COVERAGE` with `count > 8` shall respond `VALIDATION_ERROR` without events. | Unit Test |
-| REQ-RustTester-010 | `DUMP_COVERAGE(start, 0)` shall zero the arc counters of every instrumented object, invalidate the snapshot, emit `CoverageReset(objects)` and respond `OK`. | Unit Test |
+| REQ-RustTester-010 | `DUMP_COVERAGE(start, 0)` shall zero the arc counters of every instrumented object, delete their on-disk `.gcda` files, invalidate the snapshot, emit `CoverageReset(objects)` and respond `OK`. | Unit Test |
 | REQ-RustTester-011 | Every function of the hand-written `RustTester.cpp` shall carry `no_profile_instrument_function`, so the harness logic itself contributes no counters. | Inspection |
+| REQ-RustTester-012 | In the coverage twin, `MARK` shall flush the counters into the on-disk `.gcda` files (libgcov dump) and zero them (reset) after emitting `Marker`, so coverage accumulated before a marker survives the process. | Unit Test |
+| REQ-RustTester-013 | In the coverage twin, `init` shall register every object of the gcov information section with libgcov once per process and arrange a flush at normal process exit. | Inspection |
 
 No general ports: the component has only the command, event and time special ports.
 
@@ -38,7 +40,7 @@ Passive component; `Fw.Command`, `Fw.Event` interfaces and `timeCaller`. Command
 | 3 | `CoverageDumpDone(objects, totalBytes, crc: U32)` | `coverage dump done: {} objects, {} bytes, crc {x}` |
 | 4 | `CoverageUnavailable` | `coverage not compiled into this image` |
 | 5 | `CoverageReset(objects: U32)` | `coverage counters zeroed: {} objects` |
-| 6 | `CoverageRejected(reason: DumpReject)` (warning low) | `coverage dump rejected: {}` |
+| 6 | `CoverageRejected(reason: DumpReject {NO_SNAPSHOT, OVERFLOW, FILE_ERROR})` (warning low) | `coverage dump rejected: {}` |
 
 (`id` is an FPP keyword; the model spells the argument `$id`, the dictionary and the C++ see `id`.)
 
@@ -54,26 +56,39 @@ name `gcov_info` is a C identifier so GNU ld provides `__start_gcov_info`/`__sto
 script. Libgcov symbols are declared weak in `RustTester.cpp`, so the OFF image links on any GCC and reports
 `CoverageUnavailable`.
 
-### Dump walk
+### Dump walk and native persistence
 
-Because `-fprofile-info-section` disables libgcov's constructor registration, an image that never received a
-`count = 0` writes nothing at exit (see the zeroing side effect below). A chunk-0 window walks `__start_gcov_info..__stop_gcov_info`, calling
-`__gcov_info_to_gcda(info, filenameCallback, dumpCallback, allocateCallback, this)` per object into a
-512 KiB snapshot (file-scope storage in `RustTester.cpp`, about 528 KiB of `.bss` with the arena and object table,
-up to 64 objects, single instance asserted; a stream that does not fit answers `CoverageRejected(OVERFLOW)` +
-`EXECUTION_ERROR`; the OFF image keeps only 1 KiB / 4 objects / 64 B, enough for the white-box unit test — the
-sizes live in the `.cpp`, never in the header, so the topology's translation unit sees the same class layout). The
-snapshot is necessary on this deployment: the rate groups keep ticking `rustCounter`/`rustMonitor` between
-the ground-paced windows, so live counters would make the per-window chunks and the `Done` CRC disagree
-(`fth coverage-system` refuses such a record). The allocate callback hands out 8-byte aligned blocks of a
-16 KiB static arena (libgcov asks only for top-n counter scratch, unused by `-fprofile-arcs`); no dynamic
-allocation anywhere. Zeroing registers the section's objects with libgcov once per process via `__gcov_init` (hidden
-visibility, statically linkable) and calls `__gcov_reset()`. Side effect: an image that also links libgcov's exit
-handler (the F Prime UT build with its own `--coverage`; not the deployment twin, whose `-fprofile-info-section`
-objects emit none) may write the registered objects' `.gcda` beside their `.gcno` at process exit, and libgcov
-merges into an existing `.gcda`: delete `*.gcda` under the gcno root before a run and run `fth coverage-system`
-only after the image has exited (or point `GCOV_PREFIX` at a scratch directory). GCC >= 12 omits all-zero
-counter records, so a stream dumped after a zero is shorter than the stream before it.
+Native persistence = libgcov's hosted on-disk dump/merge (the MCU analogue is counters in NOLOAD RAM): the fth
+`dev-campaign` runs the plan on the twin and the dump plan as two separate processes, and with
+`-fprofile-info-section` nothing is registered or written by itself, so the twin does it explicitly:
+
+- `init` registers the section's objects with libgcov once per process (`__gcov_init`) and installs an `atexit`
+  flush, so a clean exit (SIGINT/SIGTERM handled by `Main.cpp`) writes the tail after the last marker.
+- `MARK` emits `Marker(id)` and then calls `__gcov_dump(); __gcov_reset();` — the in-memory counters are merged
+  into each object's `.gcda` at the path the compiler recorded (`gcov_info->filename`, under the twin's build
+  cache) and restart at zero, so the files are cumulative without double counting. About ten small files per
+  marker on the host.
+- A chunk-0 window flushes the same way, then reads each object's `.gcda` from disk (`Os::File`) into the
+  512 KiB snapshot (file-scope storage in `RustTester.cpp`, about 528 KiB of `.bss` with the arena and object
+  table, up to 64 objects, single instance asserted; the OFF image keeps 1 KiB / 4 objects / 64 B for the
+  white-box unit test — the sizes live in the `.cpp`, never in the header, so the topology's translation unit
+  sees the same class layout). The object's path is obtained from libgcov itself through the filename callback
+  of `__gcov_info_to_gcda` (the data callback is unused), so the component does not depend on the `gcov_info`
+  layout; `nameCrc` is the CRC-32 of that path, which is exactly what `fth coverage-system` matches against
+  `<gcno>.gcda` under `--gcno-root`. A stream that does not fit answers `CoverageRejected(OVERFLOW)`, an
+  unreadable file `CoverageRejected(FILE_ERROR)`, both with `EXECUTION_ERROR`.
+- `count = 0` resets the counters (`__gcov_reset`) and deletes every object's `.gcda` (`Os::FileSystem::removeFile`;
+  a missing file is already in the wanted state), then emits `CoverageReset(objects)`. The dump plan uses it only
+  before the coverage run; the dump run never resets.
+
+The snapshot is still necessary: the rate groups keep ticking `rustCounter`/`rustMonitor` between the
+ground-paced windows, so live counters would make the per-window chunks and the `Done` CRC disagree (`fth
+coverage-system` refuses such a record). The allocate callback hands out 8-byte aligned blocks of a 16 KiB
+arena (libgcov asks only for top-n counter scratch, unused by `-fprofile-arcs`); no dynamic allocation anywhere.
+GCC >= 12 omits all-zero counter records, so a stream dumped after a zero is shorter than the stream before it.
+The on-disk files are also what gcov/gcovr read: delete `*.gcda` under the gcno root only before the coverage
+run, never between the coverage run and the dump run, and run `fth coverage-system` after the dump process has
+exited (it overwrites the files with the reconstructed stream).
 
 `count` is capped at 8 so one window is at most 17 events (8 chunks, up to 8 `CoverageObject` for tiny objects,
 one `CoverageDumpDone`); they go to `CdhCore.events` (Svc.EventManager), whose queue drops on overflow, so the
@@ -119,9 +134,10 @@ filters → lines 28.6 % (16/56), branches 8.8 %; three filters → lines 53.2 %
 | UT-RT-3 | uninstrumented build: `DUMP_COVERAGE(0, 8)` and `(0, 0)` emit `CoverageUnavailable`, respond `OK` (skipped in the instrumented build) | REQ-RustTester-008 |
 | UT-RT-4 | instrumented build: windows of 8 from chunk 0 to `Done`; chunk lengths sum to the object `bytes` and `totalBytes`, CRC-32 over the chunk bytes equals the `Done` crc; window `(8, 8)` repeated after 50 `MARK`s is byte-identical; a window past the end answers `Done` again (skipped when uninstrumented) | REQ-RustTester-002, -003, -004, -005 |
 | UT-RT-5 | instrumented build: `count = 0` emits `CoverageReset`; then `DUMP_COVERAGE(1, 8)` is `EXECUTION_ERROR` with `CoverageRejected(NO_SNAPSHOT)` | REQ-RustTester-006, -010 |
-| UT-RT-6 | instrumented build: walk 1, `count = 0` (`CoverageReset(objects)`), walk A, `count = 0`, walk B: same objects, A and B strictly shorter than walk 1 (GCC >= 12 omits all-zero counter records) with different CRCs | REQ-RustTester-010 |
+| UT-RT-6 | instrumented build: 50 `MARK`s (flushed to disk), walk 1, `count = 0` (`CoverageReset(objects)`), walk A, `count = 0`, walk B: same objects, A and B strictly shorter than walk 1 (zeroed counters are omitted from the stream) with different CRCs | REQ-RustTester-010, -012 |
 | UT-RT-7 | `crc32` known answer: `0xcbf43926` over `"123456789"`, continuation equals one pass | REQ-RustTester-003, -004 |
 | UT-RT-8 | white-box (every build): an injected 40-byte + 32-byte snapshot pages as chunks with MSB-first words and zero padding, `CoverageObject` with each last chunk (also when the object is a multiple of 32), `Done` only once the window reaches the end | REQ-RustTester-002, -003, -004 |
+| UT-RT-9 | instrumented build: after `count = 0` the first object's `.gcda` is absent; one `MARK` writes it (size > 0); `count = 0` deletes it again | REQ-RustTester-012, -010 |
 
 In the instrumented UT cache the test executable (autocode + tester) is instrumented too, so UT-RT-4..6 have counters
 that move with `MARK` and reset. The instrumented unit-test build is a second UT cache: `fprime-util generate --ut -DFPRIME_RUST_REFERENCE_COVERAGE=ON

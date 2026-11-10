@@ -65,6 +65,9 @@ class RustTesterTester final : public RustTesterGTestBase {
     //! UT-RT-8: white-box paging of an injected snapshot (every build)
     void injectedSnapshotWindows();
 
+    //! UT-RT-9: MARK flushes the counters to the on-disk .gcda; count = 0 deletes it (instrumented build)
+    void markFlushesAndResetUnlinks();
+
   private:
     // ----------------------------------------------------------------------
     // Helpers

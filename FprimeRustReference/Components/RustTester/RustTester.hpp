@@ -39,6 +39,10 @@ class RustTester final : public RustTesterComponentBase {
     //! Destroy RustTester object
     ~RustTester();
 
+    //! Initialize the component; in the coverage twin also registers the gcov information section with libgcov
+    //! (once per process) and arranges the exit-time flush
+    void init(FwEnumStoreType instance = 0);
+
     //! Whether the image carries a gcov information section (built with FPRIME_RUST_REFERENCE_COVERAGE)
     static bool coverageAvailable();
 
@@ -53,7 +57,7 @@ class RustTester final : public RustTesterComponentBase {
     };
 
   private:
-    friend class RustTesterTester;  //!< white-box unit tests inject a snapshot (UT-RT-7/8)
+    friend class RustTesterTester;  //!< white-box unit tests inject a snapshot (UT-RT-7/8) and read object paths (UT-RT-9)
 
     // ----------------------------------------------------------------------
     // Handler implementations for commands
@@ -88,8 +92,30 @@ class RustTester final : public RustTesterComponentBase {
     //! Emit the window [first, first + count) from the snapshot
     void emitWindow(U32 first, U32 count);
 
-    //! Zero the arc counters of every object (registers them with libgcov once)
+    //! What filenameCallback does with the .gcda path libgcov names for the current object
+    enum FileMode {
+        FILE_READ,    //!< append the file's bytes to the snapshot (takeSnapshot)
+        FILE_UNLINK,  //!< delete the file (zeroCounters)
+        FILE_PATH     //!< copy the path into m_pathOut (unit tests)
+    };
+
+    //! Register the section's objects with libgcov once per process (no-op without instrumentation)
+    static void registerObjects();
+
+    //! Flush the in-memory counters into the on-disk .gcda files and zero them (libgcov dump + reset)
+    static void flushCounters();
+
+    //! atexit hook of the twin: flush the tail after the last marker
+    static void flushAtExit();
+
+    //! Zero the arc counters of every object and delete their on-disk .gcda files
     void zeroCounters();
+
+    //! Walk the section, calling filenameCallback in `mode` for every object; false when mode FILE_READ did not fit
+    void forEachObjectFile(FileMode mode);
+
+    //! Path of the .gcda file of object `index` (unit tests); false when there is no such object
+    bool objectPath(U32 index, char* buffer, FwSizeType capacity);
 
     //! libgcov callbacks (arg is the RustTester)
     static void filenameCallback(const char* filename, void* arg);
@@ -109,6 +135,13 @@ class RustTester final : public RustTesterComponentBase {
     bool m_snapshotOverflow;                //!< the walk did not fit (set by dumpCallback)
     U8* const m_arena;                      //!< allocateCallback scratch (8-byte aligned file-scope storage), reset per object
     U32 m_arenaUsed;                        //!< bytes handed out of m_arena for the current object
+    FileMode m_fileMode;                    //!< what filenameCallback does for the object being walked
+    bool m_fileError;                       //!< a .gcda file could not be read (set by filenameCallback)
+    U32 m_pathIndex;                        //!< FILE_PATH: object whose path is wanted
+    U32 m_walkIndex;                        //!< object index during a forEachObjectFile walk
+    char* m_pathOut;                        //!< FILE_PATH: destination buffer
+    FwSizeType m_pathCapacity;              //!< FILE_PATH: destination capacity
+    bool m_pathFound;                       //!< FILE_PATH: the path was copied
     static bool s_registered;               //!< objects registered with libgcov for __gcov_reset (process-wide)
     static U32 s_instances;                 //!< live instances: the storage is single-instance
 };

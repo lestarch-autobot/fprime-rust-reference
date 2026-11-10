@@ -97,3 +97,12 @@ Delta reviewed: UUT 9ecd1f9..campaign/dev (fixtures, runtime-enum generator fix)
    gcov_info* const []`, no `const_cast`, comment). 6. `-fprofile-update=atomic`: future work (SDD notes the tearing).
 7. Null `__gcov_init`/`__gcov_reset` in a mixed image: future work (unreachable with strong references in ON).
 8. Lenient `from_code` vs strict `from_repr`: future work (documented FFI boundary is `code`/`from_code`).
+
+### Anchor ruling D2' (persistence across processes)
+Smoke showed the dump only sees the dump process's counters (16.9 % after a zero vs 53 % without). RULED and APPLIED:
+native persistence through libgcov's hosted dump/merge — `init` registers the section once (`__gcov_init`) and
+installs an `atexit` flush; `MARK` → `Marker` then `__gcov_dump(); __gcov_reset();`; a chunk-0 window flushes and
+snapshots the on-disk `.gcda` files (paths from libgcov's filename callback, `nameCrc` = CRC-32 of that path);
+`count = 0` → `__gcov_reset()` + delete the files (`CoverageReset`); OFF image unchanged (weak symbols,
+`CoverageUnavailable`). New `DumpReject::FILE_ERROR`; REQ-RustTester-012/013; UT-RT-9; UT-RT-6 flushes 50 markers
+first. Proof: two-process scenario (see the re-entry report). Supersedes the earlier "no exit-time dump" note.

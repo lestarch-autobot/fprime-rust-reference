@@ -120,7 +120,10 @@ sealed faults, and `fth verify-plan --tests` refuses a test that names them.
 `FprimeRustReference.RustTester` (`rustTester`, base id 0x10027000, plain C++, `Components/RustTester/`) is the
 harness tester of fprime-system-test-harness §1(4): `MARK(id)` emits `Marker {}` (the fth run-start marker) and
 `DUMP_COVERAGE(start, count)` pages the gcov counters of the judged C++ scope out as `CoverageChunk` /
-`CoverageObject` / `CoverageDumpDone` events in the `fth coverage-system` text contract (§3a). The pure
+`CoverageObject` / `CoverageDumpDone` events in the `fth coverage-system` text contract (§3a). Native persistence is
+libgcov's on-disk merge: every `MARK` flushes the counters into the `.gcda` files beside the `.gcno` in the twin's
+build cache (dump + reset), a chunk-0 window flushes and then pages those files, `DUMP_COVERAGE 0 0` zeroes the
+counters and deletes the files — so a dump process reads what earlier processes accumulated. The pure
 reference image (default) carries no instrumentation and answers `CoverageUnavailable`; the coverage twin is a
 second build cache with the `FPRIME_RUST_REFERENCE_COVERAGE` option and a GCC >= 12:
 
@@ -128,6 +131,7 @@ second build cache with the `FPRIME_RUST_REFERENCE_COVERAGE` option and a GCC >=
 cd FprimeRustReference/ReferenceDeployment
 CC=gcc-15 CXX=g++-15 fprime-util generate -DFPRIME_RUST_REFERENCE_COVERAGE=ON --build-cache "$PWD/../../build-fprime-automatic-native-cov"
 fprime-util build --build-cache "$PWD/../../build-fprime-automatic-native-cov" -j8
+# before the coverage run only: DUMP_COVERAGE 0 0 (zero + delete the .gcda files); never between runs
 # after a run that paced DUMP_COVERAGE windows (8 chunks each, start = 0, 8, 16, ... until CoverageDumpDone):
 fth coverage-system --record <events.jsonl dir> --gcno-root "$PWD/../../build-fprime-automatic-native-cov"     --project-root "$PWD/../.." --filter FprimeRustReference/Components/ --filter lib/fprime-rust/FprimeRust/     --filter build-fprime-automatic-native-cov/FprimeRustReference/Components/ --gcov gcov-15 --out <out>
 ```

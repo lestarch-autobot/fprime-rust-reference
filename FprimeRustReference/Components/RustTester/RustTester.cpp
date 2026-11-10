@@ -6,9 +6,12 @@
 
 #include "FprimeRustReference/Components/RustTester/RustTester.hpp"
 
+#include <cstdlib>
 #include <cstring>
 
 #include "Fw/Types/Assert.hpp"
+#include "Os/File.hpp"
+#include "Os/FileSystem.hpp"
 
 // libgcov interface (GCC >= 12 with -fprofile-info-section=gcov_info), declared without <gcov.h>. In the
 // instrumented build (FPRIME_RUST_REFERENCE_COVERAGE=1 from CMake) the references are strong so the linker
@@ -32,6 +35,7 @@ extern void __gcov_info_to_gcda(const struct gcov_info* info,
                                 void* arg) RUST_TESTER_LIBGCOV;
 extern void __gcov_init(struct gcov_info* info) RUST_TESTER_LIBGCOV;
 extern void __gcov_reset(void) RUST_TESTER_LIBGCOV;
+extern void __gcov_dump(void) RUST_TESTER_LIBGCOV;
 }
 
 // Everything that runs between two dump windows must not move the counters it describes (harness §3a)
@@ -81,13 +85,25 @@ RUST_TESTER_NO_PROFILE RustTester ::RustTester(const char* const compName)
       m_snapshotValid(false),
       m_snapshotOverflow(false),
       m_arena(s_arena),
-      m_arenaUsed(0) {
+      m_arenaUsed(0),
+      m_fileMode(FILE_READ),
+      m_fileError(false),
+      m_pathIndex(0),
+      m_walkIndex(0),
+      m_pathOut(nullptr),
+      m_pathCapacity(0),
+      m_pathFound(false) {
     RustTester::s_instances++;
     FW_ASSERT(RustTester::s_instances == 1, static_cast<FwAssertArgType>(RustTester::s_instances));
 }
 
 RUST_TESTER_NO_PROFILE RustTester ::~RustTester() {
     RustTester::s_instances--;
+}
+
+RUST_TESTER_NO_PROFILE void RustTester ::init(FwEnumStoreType instance) {
+    RustTesterComponentBase::init(instance);
+    RustTester::registerObjects();
 }
 
 RUST_TESTER_NO_PROFILE U32 RustTester ::snapshotCapacity() {
@@ -126,6 +142,9 @@ RUST_TESTER_NO_PROFILE U32 RustTester ::crc32(U32 crc, const U8* data, FwSizeTyp
 
 RUST_TESTER_NO_PROFILE void RustTester ::MARK_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, U32 id) {
     this->log_ACTIVITY_LO_Marker(id);
+    // twin: the marker is also the persistence point — counters so far go to the on-disk .gcda files
+    // (cumulative merge) and the in-memory counters restart at zero, so nothing is counted twice
+    RustTester::flushCounters();
     this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::OK);
 }
 
@@ -152,7 +171,8 @@ RUST_TESTER_NO_PROFILE void RustTester ::DUMP_COVERAGE_cmdHandler(FwOpcodeType o
     }
     if (start == 0) {
         if (!this->takeSnapshot()) {
-            this->log_WARNING_LO_CoverageRejected(RustTester_DumpReject::OVERFLOW);
+            this->log_WARNING_LO_CoverageRejected(this->m_fileError ? RustTester_DumpReject::FILE_ERROR
+                                                                    : RustTester_DumpReject::OVERFLOW);
             this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::EXECUTION_ERROR);
             return;
         }
@@ -174,27 +194,63 @@ RUST_TESTER_NO_PROFILE bool RustTester ::takeSnapshot() {
     this->m_objectCount = 0;
     this->m_snapshotBytes = 0;
     this->m_snapshotOverflow = false;
+    this->m_fileError = false;
     this->m_snapshotValid = false;
-    for (const struct gcov_info* const* it = __start_gcov_info; it != __stop_gcov_info; ++it) {
-        if (this->m_objectCount >= MAX_OBJECTS) {
-            return false;
-        }
-        ObjectRecord& record = this->m_objects[this->m_objectCount];
-        record.offset = this->m_snapshotBytes;
-        record.bytes = 0;
-        record.nameCrc = 0;
-        this->m_arenaUsed = 0;
-        __gcov_info_to_gcda(*it, &RustTester::filenameCallback, &RustTester::dumpCallback,
-                            &RustTester::allocateCallback, this);
-        if (this->m_snapshotOverflow) {
-            return false;
-        }
-        record.bytes = this->m_snapshotBytes - record.offset;
-        this->m_objectCount++;
+    // the on-disk files are the persistent, cumulative record (markers and earlier processes flushed into
+    // them); bring them up to date, then the snapshot is their content
+    RustTester::flushCounters();
+    this->forEachObjectFile(FILE_READ);
+    if (this->m_snapshotOverflow || this->m_fileError) {
+        return false;
     }
     this->m_snapshotCrc = RustTester::crc32(0, this->m_snapshot, this->m_snapshotBytes);
     this->m_snapshotValid = true;
     return true;
+}
+
+RUST_TESTER_NO_PROFILE void RustTester ::forEachObjectFile(FileMode mode) {
+    this->m_fileMode = mode;
+    this->m_walkIndex = 0;
+    for (struct gcov_info* const* it = __start_gcov_info; it != __stop_gcov_info; ++it) {
+        if (mode == FILE_READ) {
+            if (this->m_objectCount >= MAX_OBJECTS) {
+                this->m_snapshotOverflow = true;
+                return;
+            }
+            ObjectRecord& record = this->m_objects[this->m_objectCount];
+            record.offset = this->m_snapshotBytes;
+            record.bytes = 0;
+            record.nameCrc = 0;
+        }
+        this->m_arenaUsed = 0;
+        // libgcov names the object's .gcda path through the filename callback (the data callback is not used:
+        // the bytes come from the file); this keeps the component independent of the gcov_info layout
+        __gcov_info_to_gcda(*it, &RustTester::filenameCallback, &RustTester::dumpCallback,
+                            &RustTester::allocateCallback, this);
+        if (mode == FILE_READ) {
+            if (this->m_snapshotOverflow || this->m_fileError) {
+                return;
+            }
+            ObjectRecord& record = this->m_objects[this->m_objectCount];
+            record.bytes = this->m_snapshotBytes - record.offset;
+            this->m_objectCount++;
+        }
+        this->m_walkIndex++;
+    }
+}
+
+RUST_TESTER_NO_PROFILE bool RustTester ::objectPath(U32 index, char* buffer, FwSizeType capacity) {
+    FW_ASSERT(buffer != nullptr);
+    if (!RustTester::coverageAvailable()) {
+        return false;
+    }
+    this->m_pathIndex = index;
+    this->m_pathOut = buffer;
+    this->m_pathCapacity = capacity;
+    this->m_pathFound = false;
+    this->forEachObjectFile(FILE_PATH);
+    this->m_pathOut = nullptr;
+    return this->m_pathFound;
 }
 
 RUST_TESTER_NO_PROFILE void RustTester ::emitWindow(U32 first, U32 count) {
@@ -226,44 +282,104 @@ RUST_TESTER_NO_PROFILE void RustTester ::emitWindow(U32 first, U32 count) {
     }
 }
 
-RUST_TESTER_NO_PROFILE void RustTester ::zeroCounters() {
-    if (__gcov_init == nullptr || __gcov_reset == nullptr) {
+RUST_TESTER_NO_PROFILE void RustTester ::registerObjects() {
+    if (__gcov_init == nullptr || !RustTester::coverageAvailable() || RustTester::s_registered) {
         return;
     }
-    if (!RustTester::s_registered) {
-        // -fprofile-info-section skips libgcov's constructor registration; register once so __gcov_reset
-        // reaches every object. Side effect: an image that also links libgcov's exit handler (e.g. the F Prime
-        // UT build with its own --coverage) then writes these objects' .gcda files at process exit.
-        // Only objects compiled through fprime_rust_reference_instrument (info section, no constructor) may be
-        // in this image: a translation unit instrumented the ordinary way registers itself and a second
-        // registration here would make libgcov's list circular.
-        for (struct gcov_info* const* it = __start_gcov_info; it != __stop_gcov_info; ++it) {
-            __gcov_init(*it);
-        }
-        RustTester::s_registered = true;
+    // -fprofile-info-section skips libgcov's constructor registration; register the section once per process so
+    // __gcov_dump/__gcov_reset reach every object, and flush the tail at exit (the twin emits no exit handler
+    // of its own). Only objects compiled through fprime_rust_reference_instrument (info section, no
+    // constructor) may be in this image: a translation unit instrumented the ordinary way registers itself and
+    // a second registration here would make libgcov's list circular.
+    for (struct gcov_info* const* it = __start_gcov_info; it != __stop_gcov_info; ++it) {
+        __gcov_init(*it);
     }
+    RustTester::s_registered = true;
+    (void)std::atexit(&RustTester::flushAtExit);
+}
+
+RUST_TESTER_NO_PROFILE void RustTester ::flushCounters() {
+    if (__gcov_dump == nullptr || __gcov_reset == nullptr || !RustTester::s_registered) {
+        return;
+    }
+    __gcov_dump();   // merge the in-memory counters into the on-disk .gcda of every registered object
+    __gcov_reset();  // and start again from zero, so the files stay cumulative without double counting
+}
+
+RUST_TESTER_NO_PROFILE void RustTester ::flushAtExit() {
+    RustTester::flushCounters();
+}
+
+RUST_TESTER_NO_PROFILE void RustTester ::zeroCounters() {
+    if (__gcov_reset == nullptr) {
+        return;
+    }
+    RustTester::registerObjects();
     __gcov_reset();
+    this->forEachObjectFile(FILE_UNLINK);
 }
 
 RUST_TESTER_NO_PROFILE void RustTester ::filenameCallback(const char* filename, void* arg) {
     FW_ASSERT(arg != nullptr);
     RustTester* const self = static_cast<RustTester*>(arg);
-    FW_ASSERT(self->m_objectCount < MAX_OBJECTS, static_cast<FwAssertArgType>(self->m_objectCount));
-    if (filename != nullptr) {
-        self->m_objects[self->m_objectCount].nameCrc =
-            RustTester::crc32(0, reinterpret_cast<const U8*>(filename), static_cast<FwSizeType>(strlen(filename)));
+    if (filename == nullptr) {
+        self->m_fileError = (self->m_fileMode == FILE_READ);
+        return;
+    }
+    switch (self->m_fileMode) {
+        case FILE_READ: {
+            FW_ASSERT(self->m_objectCount < MAX_OBJECTS, static_cast<FwAssertArgType>(self->m_objectCount));
+            ObjectRecord& record = self->m_objects[self->m_objectCount];
+            record.nameCrc = RustTester::crc32(0, reinterpret_cast<const U8*>(filename),
+                                               static_cast<FwSizeType>(strlen(filename)));
+            Os::File file;
+            if (file.open(filename, Os::File::OPEN_READ) != Os::File::OP_OK) {
+                self->m_fileError = true;
+                return;
+            }
+            FwSizeType size = 0;
+            if (file.size(size) != Os::File::OP_OK) {
+                self->m_fileError = true;
+                return;
+            }
+            if (size > static_cast<FwSizeType>(SNAPSHOT_BYTES - self->m_snapshotBytes)) {
+                self->m_snapshotOverflow = true;
+                return;
+            }
+            FwSizeType read = size;
+            if (size > 0 && (file.read(&self->m_snapshot[self->m_snapshotBytes], read, Os::File::WAIT) !=
+                                 Os::File::OP_OK ||
+                             read != size)) {
+                self->m_fileError = true;
+                return;
+            }
+            self->m_snapshotBytes += static_cast<U32>(size);
+            break;
+        }
+        case FILE_UNLINK:
+            // a file that does not exist yet (never flushed) is already in the wanted state
+            (void)Os::FileSystem::removeFile(filename);
+            break;
+        case FILE_PATH:
+            if (self->m_walkIndex == self->m_pathIndex && self->m_pathOut != nullptr) {
+                const FwSizeType length = static_cast<FwSizeType>(strlen(filename));
+                if (length < self->m_pathCapacity) {
+                    (void)memcpy(self->m_pathOut, filename, length + 1);
+                    self->m_pathFound = true;
+                }
+            }
+            break;
+        default:
+            FW_ASSERT(0, static_cast<FwAssertArgType>(self->m_fileMode));
+            break;
     }
 }
 
 RUST_TESTER_NO_PROFILE void RustTester ::dumpCallback(const void* data, unsigned length, void* arg) {
+    // the snapshot is read from the on-disk files; libgcov's in-memory serialization is not used
+    (void)data;
+    (void)length;
     FW_ASSERT(arg != nullptr);
-    RustTester* const self = static_cast<RustTester*>(arg);
-    if (self->m_snapshotOverflow || (static_cast<U32>(length) > SNAPSHOT_BYTES - self->m_snapshotBytes)) {
-        self->m_snapshotOverflow = true;
-        return;
-    }
-    (void)memcpy(&self->m_snapshot[self->m_snapshotBytes], data, length);
-    self->m_snapshotBytes += static_cast<U32>(length);
 }
 
 RUST_TESTER_NO_PROFILE void* RustTester ::allocateCallback(unsigned length, void* arg) {

@@ -7,6 +7,9 @@
 #include "RustTesterTester.hpp"
 
 #include "Fw/Test/UnitTest.hpp"
+#include "Os/FileSystem.hpp"
+
+#include <cstring>
 
 namespace FprimeRustReference {
 
@@ -145,10 +148,15 @@ void RustTesterTester ::windowWithoutSnapshotRejected() {
 
 void RustTesterTester ::zeroResetsCounters() {
     REQUIREMENT("REQ-RustTester-010");
-    COMMENT("UT-RT-6: walk 1 (counters of everything run so far), zero, walk A, zero, walk B: A and B are shorter "
-            "than walk 1 (zeroed counters are omitted from the stream) and differ from it; CoverageReset each time");
+    COMMENT("UT-RT-6: 50 MARKs then walk 1 (everything flushed so far), zero (counters and files), walk A, zero, walk "
+            "B: A and B are shorter than walk 1 (zeroed counters are omitted from the stream) and differ from it; "
+            "CoverageReset each time");
     if (!RustTester::coverageAvailable()) {
         GTEST_SKIP() << "built without FPRIME_RUST_REFERENCE_COVERAGE: no gcov information section";
+    }
+    // markers flush to disk: walk 1 sees everything this process accumulated (on disk + in memory)
+    for (U32 i = 0; i < 50; i++) {
+        this->sendCmd_MARK(0, 2000 + i, i);
     }
     U32 objects1 = 0, bytes1 = 0, crc1 = 0, chunksCrc1 = 0;
     (void)this->walkAll(objects1, bytes1, crc1, chunksCrc1);
@@ -231,6 +239,29 @@ void RustTesterTester ::injectedSnapshotWindows() {
     this->component.emitWindow(3, 8);
     ASSERT_EVENTS_SIZE(1);
     ASSERT_EVENTS_CoverageDumpDone_SIZE(1);
+}
+
+void RustTesterTester ::markFlushesAndResetUnlinks() {
+    REQUIREMENT("REQ-RustTester-012");
+    REQUIREMENT("REQ-RustTester-010");
+    COMMENT("UT-RT-9: after a zero the first object's on-disk .gcda is gone; one MARK writes it back; a zero deletes "
+            "it again (persistence point = marker; reset = counters + files)");
+    if (!RustTester::coverageAvailable()) {
+        GTEST_SKIP() << "built without FPRIME_RUST_REFERENCE_COVERAGE: no gcov information section";
+    }
+    char path[1024];
+    ASSERT_TRUE(this->component.objectPath(0, path, sizeof path));
+    ASSERT_NE(strstr(path, ".gcda"), nullptr) << path;
+    FwSizeType size = 0;
+    this->dump(0, 0, Fw::CmdResponse::OK);
+    ASSERT_NE(Os::FileSystem::getFileSize(path, size), Os::FileSystem::OP_OK) << path << " should be gone";
+    this->clearHistory();
+    this->sendCmd_MARK(0, 1, 9);
+    ASSERT_EVENTS_Marker_SIZE(1);
+    ASSERT_EQ(Os::FileSystem::getFileSize(path, size), Os::FileSystem::OP_OK) << path << " should exist";
+    ASSERT_GT(size, 0U);
+    this->dump(0, 0, Fw::CmdResponse::OK);
+    ASSERT_NE(Os::FileSystem::getFileSize(path, size), Os::FileSystem::OP_OK) << path << " should be gone";
 }
 
 // ----------------------------------------------------------------------

@@ -12,6 +12,7 @@ module FprimeRustReference {
     enum DumpReject {
       NO_SNAPSHOT @< start > 0 but no chunk-0 window took a snapshot since the last reset
       OVERFLOW @< the gcda stream does not fit the snapshot buffer or the object table
+      FILE_ERROR @< an on-disk .gcda file named by libgcov could not be read
     }
 
     # ----------------------------------------------------------------------
@@ -31,13 +32,15 @@ module FprimeRustReference {
     # Commands
     # ----------------------------------------------------------------------
 
-    @ Run-start marker: emits Marker(id) synchronously, then responds OK
+    @ Run-start marker: emits Marker(id) synchronously, then responds OK. In the coverage twin the handler also
+    @ flushes the counters to the on-disk .gcda files (libgcov dump + reset), so coverage survives the process.
     sync command MARK(
       $id: U32 @< Marker id echoed in the event
     ) opcode 0
 
-    @ Coverage window: emits the global 32-byte gcda chunks start..start+count-1 (count 1..8);
-    @ count 0 zeroes the counters. Without instrumentation only CoverageUnavailable is emitted.
+    @ Coverage window: emits the global 32-byte gcda chunks start..start+count-1 (count 1..8) of the on-disk
+    @ .gcda files (flushed first); count 0 zeroes the counters and deletes those files. Without instrumentation
+    @ only CoverageUnavailable is emitted.
     sync command DUMP_COVERAGE(
       start: U16 @< First global chunk index of the window
       count: U8 @< Chunks in the window (0 = zero the counters; > 8 is a validation error)
@@ -84,7 +87,7 @@ module FprimeRustReference {
     @ The image was built without FPRIME_RUST_REFERENCE_COVERAGE: no gcov information section
     event CoverageUnavailable severity warning low id 4 format "coverage not compiled into this image"
 
-    @ DUMP_COVERAGE(start, 0): the arc counters of every instrumented object were zeroed
+    @ DUMP_COVERAGE(start, 0): the arc counters of every instrumented object were zeroed and their .gcda files deleted
     event CoverageReset(
       objects: U32 @< Instrumented objects in the gcov information section
     ) severity activity low id 5 format "coverage counters zeroed: {} objects"
