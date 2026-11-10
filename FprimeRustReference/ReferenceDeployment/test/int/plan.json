@@ -174,10 +174,9 @@
     "REQ-FprimeRust-015": {
       "tests": [
         "L2-2",
-        "L5-1",
-        "L7-1"
+        "L5-1"
       ],
-      "verification": "Unit Test; Integration Test: L2-2, L5-1, L7-1",
+      "verification": "Unit Test; Integration Test: L2-2, L5-1",
       "note": "Unit Test; Integration Test",
       "rationale": "R1/R4: parameters with validity, as paramGet returns in C++"
     },
@@ -195,8 +194,8 @@
     },
     "REQ-FprimeRust-018": {
       "tests": [],
-      "verification": "Inspection",
-      "note": "Inspection",
+      "verification": "Unit Test; Inspection",
+      "note": "Unit Test; Inspection",
       "rationale": "E5/R4: one Rust runtime per deployment, no duplicate references"
     },
     "REQ-FprimeRust-020": {
@@ -374,15 +373,6 @@
       "note": "Unit Test; Integration Test",
       "rationale": "R4 parameters: update takes effect (REQ-FprimeRust-015)"
     },
-    "REQ-RustCounter-007": {
-      "tests": [
-        "L7-1"
-      ],
-      "verification": "Integration Test: L7-1",
-      "note": "Integration Test",
-      "rationale": "E-1 ruling: final-state evidence is a UUT state file (PrmDb.dat)",
-      "waiver": "single covering test (L7-1): the parameter file is saved once per run; redundancy is the auditor's independent parse of the downlinked file plus planted fault threshold_not_saved"
-    },
     "REQ-RustMonitor-001": {
       "tests": [
         "L2-5"
@@ -480,8 +470,8 @@
     "reason": "CdhCore.Subtopology instantiates Svc.Version; L0-1 compares ProjectVersion/LibraryVersions with the manifest describe strings"
   },
   "final_state": {
-    "accepted_evidence": "L7-1 in-band PrmDb.dat save + downlink",
-    "rationale": "Anchor ruling E-1 (round 1): the final state is a UUT state file. fth v0.1.2 run.flash() hashes the bench `dump` read-back against the manifest image at flash time (run.py: 'read-back differs from image'), so `dump` must read the installed executable; the parameter file therefore leaves the UUT by file downlink inside the L7-1 window and the auditor parses the downlinked PrmDb.dat (Svc/PrmDb/docs/sdd.md §3.2 record format) for THRESHOLD == 42 independently of the UUT's events and telemetry; the planted fault threshold_not_saved disturbs exactly this artifact."
+    "accepted_evidence": "L7-1: record/raw/files/PrmDb.dat (downlinked by FileHandling.fileDownlink.SendFile into the GDS --file-storage-directory {logs}/files) parsed by prmdb_record_equals: record 0x10016000 == 42; plus PrmFileSaveComplete(records=1) and FileSent in the window",
+    "rationale": "Anchor ruling E-1 (round 1): the final state is a UUT state file. fth v0.1.2 run.flash() hashes the bench `dump` read-back against the manifest image at flash time (run.py: 'read-back differs from image'), so `dump` must read the installed executable; the parameter file therefore leaves the UUT by file downlink inside the L7-1 window and the prmdb_record_equals helper check parses record/raw/files/PrmDb.dat (Svc/PrmDb/docs/sdd.md §3.2 record format) for THRESHOLD == 42 independently of the UUT's events and telemetry (UNVERIFIED when the file is absent, FAIL on a mismatch); the planted fault threshold_not_saved disturbs exactly this artifact."
   },
   "max_planted_faults": 2,
   "levels": {
@@ -505,13 +495,15 @@
     "7. Author (2026-11-10): L3 not covered — the native bench has no reset row; acknowledged in coverage.not_covered_ack. Recommended ruling: accept, or add a reset row (kill + relaunch via gds) in DEVELOPMENT if persistence proof is wanted.",
     "8. Author (2026-11-10, revised round 1): REQ-FprimeRust-018 (one Rust runtime per executable) is verified by Inspection of the build (UT-BUILD-1: exactly one libfprime_rust_<Deployment>.a on the link line, `nm` shows one definition of rust_begin_unwind, no duplicate-symbol diagnostics); L0-1 is an entry gate.",
     "9. Author (2026-11-10, revised round 1): max planted faults per run = 2; menu holds 7 faults ≥ 2×2; every system-covered requirement has ≥2 covering tests with disjoint planted-fault sets or a waiver note; ripples stated per fault (every functional test opens with RESET or an explicit SET_LIMIT, which insulates it from the previous test's residue).",
-    "10. Author (round 1, 2026-11-10): component SDD requirement tables kept (anchor E-2); every REQ-RustCounter/RustMonitor/Relay id traced here with rationale; verify-plan --sdd passes against all four SDDs.",
-    "11. Author (round 1): unconnected output port invoked from Rust is owned by the autocoded component base (FW_ASSERT in X_out, F Prime user manual, ports); Rust sees the same abort as C++ (REQ-FprimeRust-024). Rust allocation failure: the alloc-error handler aborts under panic=abort (Rust runtime owned).",
+    "10. Author (round 1, revised round 2): component SDD requirement tables kept (anchor E-2); every REQ-RustCounter/RustMonitor/Relay id traced here with rationale. fth v0.1.2 `verify-plan --sdd` takes one baseline file, so the gate runs against the mechanical concatenation of the four committed SDDs, in this order and with this command from the reference root: `cat lib/fprime-rust/docs/sdd.md FprimeRustReference/Components/RustCounter/docs/sdd.md FprimeRustReference/Components/RustMonitor/docs/sdd.md FprimeRustReference/Components/Relay/docs/sdd.md > /tmp/sdd-concat.md && fth verify-plan FprimeRustReference/ReferenceDeployment/test/int/plan.json --sdd /tmp/sdd-concat.md`; expected last line: `requirements ok: 52 plan requirement ids all in the SDD table (52 rows) of /tmp/sdd-concat.md`.",
+    "11. Author (round 1, revised round 2): unconnected output port invoked from Rust is owned by the autocoded component base (FW_ASSERT in X_out, F Prime user manual, ports); Rust sees the same abort as C++ (REQ-FprimeRust-024); Relay guards countOut with isConnected_countOut_OutputPort(). Rust allocation failure: the alloc-error handler aborts under panic=abort. THRESHOLD persistence in PrmDb.dat is owned by the autocoded parameter base (THRESHOLD_PRM_SAVE -> prmSetOut) and Svc.PrmDb (PRM_SAVE_FILE, Svc/PrmDb/docs/sdd.md); L7-1 parses the downlinked file as final-state evidence (covers_note), not as a RustCounter requirement.",
     "12. Author (round 1): `@ fprime-rust` on a non-component element is ignored (UT-AC-1). THRESHOLD invalid/absent in prmDb: FPP default 100 applies (framework parameter semantics). RustMonitor queue full: countIn drops (FPP `drop`), SET_LIMIT asserts (F Prime default); Relay countOut unconnected: count dropped, Relayed still counts.",
     "13. Author (round 1): bench `dump` reads the installed executable because fth v0.1.2 flash() requires read-back sha256 == image sha256; final state is the in-band PrmDb.dat save + file downlink (see final_state). NEW elicitation finding for the anchor.",
     "14. Author (round 1): lib/fprime-rust submodule URL changes from https://github.com/JPL-Devin/fprime-rust.git (branch devin/1778113254-initial-import) to https://github.com/lestarch-autobot/fprime-rust.git branch main, and lib/fprime is pinned to nasa/fprime b188d185ec46699b5fdc0a0666537896a5ea9d47 — both DEVELOPMENT edits. bench/native_flash.py and bench/native_dump.py are design items DEVELOPMENT creates and the package pins.",
     "15. Author (round 1): L0-1 judges that version events are present with non-empty payloads; equality with manifest repos[].describe is the fth deliver/audit dictionary-describe check (fth v0.1.2 engine has no manifest-substituted predicate), declared by image_version policy required.",
-    "16. Author (round 1): the fpp-check gate ran on the full closure (reference FPP + nasa/fprime b188d185 Fw/Svc/Drv/Os/Utils/CFDP/default/Fpp/cmake + unix PlatformTypes.fpp, fpp-check v4.0.0a1 = the pin's requirements.txt) — clean; topology uses `deployment topology` (accepted by fpp 4.0.0a1)."
+    "16. Author (round 1): the fpp-check gate ran on the full closure (reference FPP + nasa/fprime b188d185 Fw/Svc/Drv/Os/Utils/CFDP/default/Fpp/cmake + unix PlatformTypes.fpp, fpp-check v4.0.0a1 = the pin's requirements.txt) — clean; topology uses `deployment topology` (accepted by fpp 4.0.0a1).",
+    "17. Author (round 2): RustMonitor.SET_LIMIT keeps the F Prime default `assert` on queue full (every async command in the deployment, CdhCore included, shares it); operational bound: fewer than 10 SET_LIMITs plus counts queued within one 1 Hz run (queue depth Default.QUEUE_SIZE = 10); countIn is `drop` without trace (a missed comparison is accepted for the reference; a flight monitor would use `hook` with a dropped-count channel). Planted-fault classes: threshold_not_set, bump_zero, limit_not_set are stimulus faults (command rewrites reset within the test); threshold_not_saved is the uut-state fault.",
+    "18. Author (round 2): queued dispatch shape — the generated sync/guarded entry of a queued Rust component drains the base queue (dispatchAvailableMessages()) under the one instance lock before constructing &mut Implementation; async entries of queued components take no lock; so no two &mut Implementation are live (fprime-rust SDD §Behavior; UT-SHIM-6, UT-RT-4 Miri)."
   ],
   "tests": [
     {
@@ -1009,19 +1001,17 @@
     {
       "id": "L7-1",
       "title": "Final state",
-      "purpose": "Saves THRESHOLD 42 into the parameter file, downlinks the file and resets the counter to leave the deployment in an independently verifiable state.",
+      "purpose": "Saves THRESHOLD 42 into the parameter file, downlinks the file into the record and resets the counter to leave the deployment in an independently verifiable state.",
       "covers": [
         "REQ-FprimeRust-010",
         "REQ-FprimeRust-011",
-        "REQ-FprimeRust-015",
         "REQ-RustCounter-001",
         "REQ-RustCounter-004",
-        "REQ-RustCounter-007",
         "REQ-Relay-001",
         "REQ-Relay-002",
         "REQ-RustMonitor-003"
       ],
-      "covers_note": "",
+      "covers_note": "final-state evidence (THRESHOLD persistence in PrmDb.dat) is owned by the autocoded parameter base + Svc.PrmDb, not traced to a component row (decision log 11)",
       "setup": "All earlier tests run.",
       "procedure": [
         "MARK(110)",
@@ -1035,7 +1025,7 @@
         "rustCounter.RESET()",
         "bracket (2 samples)",
         "MARK(111)",
-        "action: the auditor parses the downlinked PrmDb.dat in the GDS files directory (CRC32, 0xA5 delimiter, U32 record size, FwPrmIdType id, value; Svc/PrmDb/docs/sdd.md §3.2) and requires THRESHOLD (id 0x10016000) == 42"
+        "action: the recorder's GDS stores downlinked files under {logs}/files (bench gds --file-storage-directory), i.e. record/raw/files/PrmDb.dat; the prmdb_record_equals check parses it (CRC32, 0xA5 delimiter, U32 record size, FwPrmIdType id, value; Svc/PrmDb/docs/sdd.md §3.2)"
       ],
       "windows": [
         {
@@ -1048,6 +1038,15 @@
       "metrics": [
         "event FileHandling.prmDb.PrmFileSaveComplete(records=1) count == 1",
         "event FileHandling.fileDownlink.FileSent count == 1",
+        {
+          "helper": "prmdb_record_equals",
+          "text": "PrmDb.dat record 0x10016000 == 42",
+          "args": {
+            "path": "files/PrmDb.dat",
+            "id": 268525568,
+            "value": 42
+          }
+        },
         "event rustCounter.ResetIssued count == 1",
         "last(rustCounter.Counter) == 0",
         "last(rustMonitor.LastCount) == 0",
@@ -1068,7 +1067,7 @@
         "skip_reset",
         "threshold_not_saved"
       ],
-      "evidence": "PrmFileSaveComplete(1), FileSent, ResetIssued; Counter 0; Relayed +1; downlinked PrmDb.dat holds THRESHOLD = 42."
+      "evidence": "PrmFileSaveComplete(1), FileSent, ResetIssued; Counter 0; LastCount 0; Relayed +1; record/raw/files/PrmDb.dat holds THRESHOLD (0x10016000) = 42."
     }
   ]
 }

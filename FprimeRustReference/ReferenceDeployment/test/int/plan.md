@@ -134,13 +134,13 @@ Planted faults:negative_wrong_limit
 
 ID:        L7-1
 Title:     Final state
-Purpose:   Saves THRESHOLD 42 into the parameter file, downlinks the file and resets the counter to leave the deployment in an independently verifiable state.
-Covers:    REQ-FprimeRust-010, REQ-FprimeRust-011, REQ-FprimeRust-015, REQ-RustCounter-001, REQ-RustCounter-004, REQ-RustCounter-007, REQ-Relay-001, REQ-Relay-002, REQ-RustMonitor-003
+Purpose:   Saves THRESHOLD 42 into the parameter file, downlinks the file into the record and resets the counter to leave the deployment in an independently verifiable state.
+Covers:    REQ-FprimeRust-010, REQ-FprimeRust-011, REQ-RustCounter-001, REQ-RustCounter-004, REQ-Relay-001, REQ-Relay-002, REQ-RustMonitor-003 — final-state evidence (THRESHOLD persistence in PrmDb.dat) is owned by the autocoded parameter base + Svc.PrmDb, not traced to a component row (decision log 11)
 Setup:     All earlier tests run.
-Procedure: MARK(110); bracket (2 samples); rustCounter.THRESHOLD_PRM_SET(42); rustCounter.THRESHOLD_PRM_SAVE(); FileHandling.prmDb.PRM_SAVE_FILE(); wait 2 s; FileHandling.fileDownlink.SendFile(PrmDb.dat, PrmDb.dat); wait 5 s; rustCounter.RESET(); bracket (2 samples); MARK(111); action: the auditor parses the downlinked PrmDb.dat in the GDS files directory (CRC32, 0xA5 delimiter, U32 record size, FwPrmIdType id, value; Svc/PrmDb/docs/sdd.md §3.2) and requires THRESHOLD (id 0x10016000) == 42.
+Procedure: MARK(110); bracket (2 samples); rustCounter.THRESHOLD_PRM_SET(42); rustCounter.THRESHOLD_PRM_SAVE(); FileHandling.prmDb.PRM_SAVE_FILE(); wait 2 s; FileHandling.fileDownlink.SendFile(PrmDb.dat, PrmDb.dat); wait 5 s; rustCounter.RESET(); bracket (2 samples); MARK(111); action: the recorder's GDS stores downlinked files under {logs}/files (bench gds --file-storage-directory), i.e. record/raw/files/PrmDb.dat; the prmdb_record_equals check parses it (CRC32, 0xA5 delimiter, U32 record size, FwPrmIdType id, value; Svc/PrmDb/docs/sdd.md §3.2).
 Window:    Marker(id=110) … Marker(id=111)
-Pass rule: named checks declared in the integration test (test_L7_1). metrics: event FileHandling.prmDb.PrmFileSaveComplete(records=1) count == 1 (THRESHOLD is the only parameter in the deployment, so the saved file holds exactly one record); event FileHandling.fileDownlink.FileSent count == 1; event rustCounter.ResetIssued count == 1; last(rustCounter.Counter) == 0; last(rustMonitor.LastCount) == 0; delta(relay.Relayed) == 1 (the reset count 0 travels Rust→C++→Rust one more time); event CdhCore.cmdDisp.OpCodeError count == 0.
-Evidence:  PrmFileSaveComplete(1), FileSent, ResetIssued; Counter 0; Relayed +1; downlinked PrmDb.dat holds THRESHOLD = 42.
+Pass rule: named checks declared in the integration test (test_L7_1). metrics: event FileHandling.prmDb.PrmFileSaveComplete(records=1) count == 1 (THRESHOLD is the only parameter in the deployment, so the saved file holds exactly one record); event FileHandling.fileDownlink.FileSent count == 1; PrmDb.dat record 0x10016000 == 42; event rustCounter.ResetIssued count == 1; last(rustCounter.Counter) == 0; last(rustMonitor.LastCount) == 0; delta(relay.Relayed) == 1 (the reset count 0 travels Rust→C++→Rust one more time); event CdhCore.cmdDisp.OpCodeError count == 0.
+Evidence:  PrmFileSaveComplete(1), FileSent, ResetIssued; Counter 0; LastCount 0; Relayed +1; record/raw/files/PrmDb.dat holds THRESHOLD (0x10016000) = 42.
 Planted faults:skip_reset, threshold_not_saved
 
 ## 4 Traceability
@@ -160,10 +160,10 @@ Planted faults:skip_reset, threshold_not_saved
 | REQ-FprimeRust-012 | Unit Test; Integration Test: L2-1, L2-5, L6-1 | Unit Test; Integration Test |
 | REQ-FprimeRust-013 | Unit Test; Integration Test: L2-1, L2-5, L5-1, L6-1 | Unit Test; Integration Test |
 | REQ-FprimeRust-014 | Unit Test; Integration Test: L2-1, L2-4, L4-1 | Unit Test; Integration Test |
-| REQ-FprimeRust-015 | Unit Test; Integration Test: L2-2, L5-1, L7-1 | Unit Test; Integration Test |
+| REQ-FprimeRust-015 | Unit Test; Integration Test: L2-2, L5-1 | Unit Test; Integration Test |
 | REQ-FprimeRust-016 | waived: Unit Test | Unit Test |
 | REQ-FprimeRust-017 | waived: Unit Test | Unit Test |
-| REQ-FprimeRust-018 | waived: Inspection | Inspection |
+| REQ-FprimeRust-018 | waived: Unit Test; Inspection | Unit Test; Inspection |
 | REQ-FprimeRust-020 | waived: Unit Test | Unit Test |
 | REQ-FprimeRust-021 | waived: Unit Test | Unit Test |
 | REQ-FprimeRust-022 | waived: Unit Test | Unit Test |
@@ -190,7 +190,6 @@ Planted faults:skip_reset, threshold_not_saved
 | REQ-RustCounter-004 | Unit Test; Integration Test: L2-1, L2-3, L7-1 | Unit Test; Integration Test |
 | REQ-RustCounter-005 | Unit Test; Integration Test: L2-4, L4-1 | Unit Test; Integration Test |
 | REQ-RustCounter-006 | Unit Test; Integration Test: L2-2, L5-1 | Unit Test; Integration Test |
-| REQ-RustCounter-007 | Integration Test: L7-1 | Integration Test |
 | REQ-RustMonitor-001 | Unit Test; Integration Test: L2-5 | Unit Test; Integration Test |
 | REQ-RustMonitor-002 | Unit Test; Integration Test: L6-1 | Unit Test; Integration Test |
 | REQ-RustMonitor-003 | Unit Test; Integration Test: L2-3, L2-5, L7-1 | Unit Test; Integration Test |
@@ -211,10 +210,10 @@ Planted faults:skip_reset, threshold_not_saved
 - L4-1: delta(rustCounter.TickCount) in 55..65; delta(rustMonitor.RunCount) in 55..65; delta(rustCounter.Counter) == 0; event rustCounter.Saturated count == 0; event CdhCore.cmdDisp.OpCodeError count == 0
 - L5-1: event rustCounter.Bumped(value=2) count == 1; event rustCounter.Saturated(value=3, threshold=3) count == 1; last(rustCounter.Counter) == 3; event rustCounter.Bumped(value=2) precedes event rustCounter.Saturated(value=3, threshold=3); event CdhCore.cmdDisp.OpCodeError count == 0
 - L6-1: event rustMonitor.InvalidLimit(limit=0) count == 1; event CdhCore.cmdDisp.OpCodeError(error=VALIDATION_ERROR) count == 1; event rustMonitor.LimitSet count == 0; delta(rustMonitor.Limit) == 0; last(rustMonitor.Limit) == 4294967295; delta(rustMonitor.Exceedances) == 0; event rustCounter.Bumped count == 0
-- L7-1: event FileHandling.prmDb.PrmFileSaveComplete(records=1) count == 1; event FileHandling.fileDownlink.FileSent count == 1; event rustCounter.ResetIssued count == 1; last(rustCounter.Counter) == 0; last(rustMonitor.LastCount) == 0; delta(relay.Relayed) == 1; event CdhCore.cmdDisp.OpCodeError count == 0
+- L7-1: event FileHandling.prmDb.PrmFileSaveComplete(records=1) count == 1; event FileHandling.fileDownlink.FileSent count == 1; PrmDb.dat record 0x10016000 == 42; event rustCounter.ResetIssued count == 1; last(rustCounter.Counter) == 0; last(rustMonitor.LastCount) == 0; delta(relay.Relayed) == 1; event CdhCore.cmdDisp.OpCodeError count == 0
 
 ## 6 Fault menu
-Generated from `planted_faults.py` planted fault declarations (`fth planted-faults-menu`): bump_wrong_amount (harness-expectation; L2-1, L2-3); bump_zero (uut-state; L5-1); limit_not_set (uut-state; L2-5); negative_wrong_limit (stimulus; L6-1); skip_reset (stimulus; L2-1, L7-1); threshold_not_saved (uut-state; L7-1); threshold_not_set (uut-state; L2-2).
+Generated from `planted_faults.py` planted fault declarations (`fth planted-faults-menu`): bump_wrong_amount (harness-expectation; L2-1, L2-3); bump_zero (stimulus; L5-1); limit_not_set (stimulus; L2-5); negative_wrong_limit (stimulus; L6-1); skip_reset (stimulus; L2-1, L7-1); threshold_not_saved (uut-state; L7-1); threshold_not_set (stimulus; L2-2).
 
 ## 7 Not covered
 L3 reset/persistence (no reset row on the native bench)
@@ -229,10 +228,12 @@ L3 reset/persistence (no reset row on the native bench)
 7. Author (2026-11-10): L3 not covered — the native bench has no reset row; acknowledged in coverage.not_covered_ack. Recommended ruling: accept, or add a reset row (kill + relaunch via gds) in DEVELOPMENT if persistence proof is wanted.
 8. Author (2026-11-10, revised round 1): REQ-FprimeRust-018 (one Rust runtime per executable) is verified by Inspection of the build (UT-BUILD-1: exactly one libfprime_rust_<Deployment>.a on the link line, `nm` shows one definition of rust_begin_unwind, no duplicate-symbol diagnostics); L0-1 is an entry gate.
 9. Author (2026-11-10, revised round 1): max planted faults per run = 2; menu holds 7 faults ≥ 2×2; every system-covered requirement has ≥2 covering tests with disjoint planted-fault sets or a waiver note; ripples stated per fault (every functional test opens with RESET or an explicit SET_LIMIT, which insulates it from the previous test's residue).
-10. Author (round 1, 2026-11-10): component SDD requirement tables kept (anchor E-2); every REQ-RustCounter/RustMonitor/Relay id traced here with rationale; verify-plan --sdd passes against all four SDDs.
-11. Author (round 1): unconnected output port invoked from Rust is owned by the autocoded component base (FW_ASSERT in X_out, F Prime user manual, ports); Rust sees the same abort as C++ (REQ-FprimeRust-024). Rust allocation failure: the alloc-error handler aborts under panic=abort (Rust runtime owned).
+10. Author (round 1, revised round 2): component SDD requirement tables kept (anchor E-2); every REQ-RustCounter/RustMonitor/Relay id traced here with rationale. fth v0.1.2 `verify-plan --sdd` takes one baseline file, so the gate runs against the mechanical concatenation of the four committed SDDs, in this order and with this command from the reference root: `cat lib/fprime-rust/docs/sdd.md FprimeRustReference/Components/RustCounter/docs/sdd.md FprimeRustReference/Components/RustMonitor/docs/sdd.md FprimeRustReference/Components/Relay/docs/sdd.md > /tmp/sdd-concat.md && fth verify-plan FprimeRustReference/ReferenceDeployment/test/int/plan.json --sdd /tmp/sdd-concat.md`; expected last line: `requirements ok: 52 plan requirement ids all in the SDD table (52 rows) of /tmp/sdd-concat.md`.
+11. Author (round 1, revised round 2): unconnected output port invoked from Rust is owned by the autocoded component base (FW_ASSERT in X_out, F Prime user manual, ports); Rust sees the same abort as C++ (REQ-FprimeRust-024); Relay guards countOut with isConnected_countOut_OutputPort(). Rust allocation failure: the alloc-error handler aborts under panic=abort. THRESHOLD persistence in PrmDb.dat is owned by the autocoded parameter base (THRESHOLD_PRM_SAVE -> prmSetOut) and Svc.PrmDb (PRM_SAVE_FILE, Svc/PrmDb/docs/sdd.md); L7-1 parses the downlinked file as final-state evidence (covers_note), not as a RustCounter requirement.
 12. Author (round 1): `@ fprime-rust` on a non-component element is ignored (UT-AC-1). THRESHOLD invalid/absent in prmDb: FPP default 100 applies (framework parameter semantics). RustMonitor queue full: countIn drops (FPP `drop`), SET_LIMIT asserts (F Prime default); Relay countOut unconnected: count dropped, Relayed still counts.
 13. Author (round 1): bench `dump` reads the installed executable because fth v0.1.2 flash() requires read-back sha256 == image sha256; final state is the in-band PrmDb.dat save + file downlink (see final_state). NEW elicitation finding for the anchor.
 14. Author (round 1): lib/fprime-rust submodule URL changes from https://github.com/JPL-Devin/fprime-rust.git (branch devin/1778113254-initial-import) to https://github.com/lestarch-autobot/fprime-rust.git branch main, and lib/fprime is pinned to nasa/fprime b188d185ec46699b5fdc0a0666537896a5ea9d47 — both DEVELOPMENT edits. bench/native_flash.py and bench/native_dump.py are design items DEVELOPMENT creates and the package pins.
 15. Author (round 1): L0-1 judges that version events are present with non-empty payloads; equality with manifest repos[].describe is the fth deliver/audit dictionary-describe check (fth v0.1.2 engine has no manifest-substituted predicate), declared by image_version policy required.
 16. Author (round 1): the fpp-check gate ran on the full closure (reference FPP + nasa/fprime b188d185 Fw/Svc/Drv/Os/Utils/CFDP/default/Fpp/cmake + unix PlatformTypes.fpp, fpp-check v4.0.0a1 = the pin's requirements.txt) — clean; topology uses `deployment topology` (accepted by fpp 4.0.0a1).
+17. Author (round 2): RustMonitor.SET_LIMIT keeps the F Prime default `assert` on queue full (every async command in the deployment, CdhCore included, shares it); operational bound: fewer than 10 SET_LIMITs plus counts queued within one 1 Hz run (queue depth Default.QUEUE_SIZE = 10); countIn is `drop` without trace (a missed comparison is accepted for the reference; a flight monitor would use `hook` with a dropped-count channel). Planted-fault classes: threshold_not_set, bump_zero, limit_not_set are stimulus faults (command rewrites reset within the test); threshold_not_saved is the uut-state fault.
+18. Author (round 2): queued dispatch shape — the generated sync/guarded entry of a queued Rust component drains the base queue (dispatchAvailableMessages()) under the one instance lock before constructing &mut Implementation; async entries of queued components take no lock; so no two &mut Implementation are live (fprime-rust SDD §Behavior; UT-SHIM-6, UT-RT-4 Miri).

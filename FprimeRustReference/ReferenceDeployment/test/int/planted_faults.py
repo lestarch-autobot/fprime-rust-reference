@@ -6,6 +6,7 @@ and returns rewritten ``args`` (``kind="rewrite"``) or a list of ``(command_name
 The fault menu is generated FROM these decorators (``fth planted-faults-menu plan.json``).
 Design-lane declarations: the stimulus (``test_rust_reference.py``) is written in DEVELOPMENT.
 
+Helpers: ``delta_in_range``, ``version_payloads_present``, ``prmdb_record_equals`` are check declarations (design lane).
 Insulation: every functional test opens with ``rustCounter.RESET`` or an explicit ``rustMonitor.SET_LIMIT``
 and restores THRESHOLD/limit before its closing marker, so a fault's residue (a wrong counter, a wrong limit)
 does not reach the next test; ``ripples_to`` is therefore empty for every fault below and the reason is in
@@ -49,6 +50,36 @@ def version_payloads_present(ctx, events):
     return not bad, "; ".join(seen), refs
 
 
+@helper("prmdb_record_equals")
+def prmdb_record_equals(ctx, path, id, value):
+    """The downlinked PrmDb.dat (record/raw/<path>) holds parameter ``id`` with the U32 ``value``.
+
+    File format (Svc/PrmDb/docs/sdd.md §3.2): U32 CRC32 of the body, then records of U8 delimiter 0xA5,
+    U32 record size, FwPrmIdType (U32) id, serialized value. UNVERIFIED when the file is absent (the
+    stimulus never produced it), FAIL on a CRC, delimiter, missing-id or value mismatch.
+    """
+    import struct
+    f = ctx.record_path(path) if hasattr(ctx, "record_path") else None
+    if f is None or not f.exists():
+        return False, f"{path} absent from the record", [], True
+    data = f.read_bytes()
+    if len(data) < 4:
+        return False, f"{path} shorter than a CRC ({len(data)} bytes)", [f"{path}:0-{len(data)}"]
+    off, found = 4, None
+    while off + 9 <= len(data):
+        if data[off] != 0xA5:
+            return False, f"bad delimiter 0x{data[off]:02x} at offset {off}", [f"{path}:{off}-{off+1}"]
+        size = struct.unpack(">I", data[off + 1:off + 5])[0]
+        pid = struct.unpack(">I", data[off + 5:off + 9])[0]
+        body = data[off + 9:off + 5 + size]
+        if pid == id:
+            found = struct.unpack(">I", body[:4])[0] if len(body) >= 4 else None
+        off += 5 + size
+    if found is None:
+        return False, f"id 0x{id:08x} not in {path} ({off} bytes scanned)", [f"{path}:0-{len(data)}"]
+    return found == value, f"id 0x{id:08x} = {found} (expected {value})", [f"{path}:0-{len(data)}"]
+
+
 @planted_fault("bump_wrong_amount", applies_to=["L2-1", "L2-3"], cls="harness-expectation",
       mechanism="harness sends BUMP(amount+1) while the plan expects the planned amounts: every Bumped payload, the final Counter and the relayed LastCount move by one; the next test opens with RESET, so nothing ripples",
       fails={
@@ -74,7 +105,7 @@ def skip_reset(test_id, command_name, args):
     return [(command_name, args)]
 
 
-@planted_fault("threshold_not_set", applies_to=["L2-2"], cls="uut-state",
+@planted_fault("threshold_not_set", applies_to=["L2-2"], cls="stimulus",
       mechanism="the planned THRESHOLD_PRM_SET(5) is sent as THRESHOLD_PRM_SET(100): the UUT keeps the default threshold and BUMP(9) does not saturate; the closing THRESHOLD_PRM_SET(100) restores the state L5-1 expects",
       fails={
         "L2-2": ["event rustCounter.Saturated(value=5, threshold=5) count == 1", "last(rustCounter.Counter) == 5", "event rustCounter.Bumped count == 0"],
@@ -85,7 +116,7 @@ def threshold_not_set(test_id, command_name, args):
     return args
 
 
-@planted_fault("bump_zero", applies_to=["L5-1"], cls="uut-state",
+@planted_fault("bump_zero", applies_to=["L5-1"], cls="stimulus",
       mechanism="both planned BUMP(2) are sent as BUMP(0): the counter stays 0, so Bumped(2), Saturated(3, 3) and the precedes check all fail; L6-1 does not read the counter and L7-1 resets it",
       fails={
         "L5-1": ["event rustCounter.Bumped(value=2) count == 1", "event rustCounter.Saturated(value=3, threshold=3) count == 1", "last(rustCounter.Counter) == 3",
@@ -97,7 +128,7 @@ def bump_zero(test_id, command_name, args):
     return args
 
 
-@planted_fault("limit_not_set", applies_to=["L2-5"], cls="uut-state",
+@planted_fault("limit_not_set", applies_to=["L2-5"], cls="stimulus",
       mechanism="the planned SET_LIMIT(4) is sent as SET_LIMIT(4000): the UUT limit is never exceeded by the count 10; the closing SET_LIMIT(4294967295) restores the limit L6-1 expects",
       fails={
         "L2-5": ["event rustMonitor.LimitSet(limit=4) count == 1", "event rustMonitor.LimitExceeded(count=10, limit=4) count == 1", "delta(rustMonitor.Exceedances) == 1"],
@@ -121,9 +152,9 @@ def negative_wrong_limit(test_id, command_name, args):
 
 
 @planted_fault("threshold_not_saved", applies_to=["L7-1"], cls="uut-state",
-      mechanism="the planned FileHandling.prmDb.PRM_SAVE_FILE is replaced by CdhCore.cmdDisp.CMD_NO_OP: the parameter file on the UUT is never written, so PrmFileSaveComplete is absent, the downlinked PrmDb.dat (if any earlier file exists) does not hold THRESHOLD 42, and the auditor's final-state parse fails; this is the fault that disturbs the final-state artifact",
+      mechanism="the planned FileHandling.prmDb.PRM_SAVE_FILE is replaced by CdhCore.cmdDisp.CMD_NO_OP: the run starts in a fresh run/FprimeRustReference/ with no PrmDb.dat, so the file is never written, PrmFileSaveComplete is absent, SendFile fails with FileOpenError and completes EXECUTION_ERROR (one OpCodeError), no FileSent occurs, no record/raw/files/PrmDb.dat exists and prmdb_record_equals reports UNVERIFIED; this is the fault that disturbs the final-state artifact",
       fails={
-        "L7-1": ["event FileHandling.prmDb.PrmFileSaveComplete(records=1) count == 1", "event FileHandling.fileDownlink.FileSent count == 1"],
+        "L7-1": ["event FileHandling.prmDb.PrmFileSaveComplete(records=1) count == 1", "event FileHandling.fileDownlink.FileSent count == 1", "PrmDb.dat record 0x10016000 == 42", "event CdhCore.cmdDisp.OpCodeError count == 0"],
       }, kind="insert")
 def threshold_not_saved(test_id, command_name, args):
     if test_id == "L7-1" and _is(command_name, "FileHandling.prmDb.PRM_SAVE_FILE"):

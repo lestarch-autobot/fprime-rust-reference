@@ -26,7 +26,7 @@
     },
     {
       "name": "bump_zero",
-      "class": "uut-state",
+      "class": "stimulus",
       "applies_to": [
         "L5-1"
       ],
@@ -44,7 +44,7 @@
     },
     {
       "name": "limit_not_set",
-      "class": "uut-state",
+      "class": "stimulus",
       "applies_to": [
         "L2-5"
       ],
@@ -110,16 +110,18 @@
       "fails": {
         "L7-1": [
           "event FileHandling.prmDb.PrmFileSaveComplete(records=1) count == 1",
-          "event FileHandling.fileDownlink.FileSent count == 1"
+          "event FileHandling.fileDownlink.FileSent count == 1",
+          "PrmDb.dat record 0x10016000 == 42",
+          "event CdhCore.cmdDisp.OpCodeError count == 0"
         ]
       },
-      "mechanism": "the planned FileHandling.prmDb.PRM_SAVE_FILE is replaced by CdhCore.cmdDisp.CMD_NO_OP: the parameter file on the UUT is never written, so PrmFileSaveComplete is absent, the downlinked PrmDb.dat (if any earlier file exists) does not hold THRESHOLD 42, and the auditor's final-state parse fails; this is the fault that disturbs the final-state artifact",
+      "mechanism": "the planned FileHandling.prmDb.PRM_SAVE_FILE is replaced by CdhCore.cmdDisp.CMD_NO_OP: the run starts in a fresh run/FprimeRustReference/ with no PrmDb.dat, so the file is never written, PrmFileSaveComplete is absent, SendFile fails with FileOpenError and completes EXECUTION_ERROR (one OpCodeError), no FileSent occurs, no record/raw/files/PrmDb.dat exists and prmdb_record_equals reports UNVERIFIED; this is the fault that disturbs the final-state artifact",
       "kind": "insert",
       "ripples_to": {}
     },
     {
       "name": "threshold_not_set",
-      "class": "uut-state",
+      "class": "stimulus",
       "applies_to": [
         "L2-2"
       ],
