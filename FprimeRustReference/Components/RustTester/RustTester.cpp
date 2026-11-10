@@ -70,6 +70,18 @@ alignas(8) U8 s_arena[ARENA_BYTES];
 
 U32 RustTester::s_instances = 0;
 
+#if defined(FPRIME_RUST_REFERENCE_COVERAGE) && FPRIME_RUST_REFERENCE_COVERAGE
+// The topology's component instances are namespace-scope statics (FprimeRustReferenceTopologyAc.cpp) destroyed
+// after main() returns, and atexit/static-destructor order is LIFO: a flush registered from init() would run
+// before those destructors, so their increments (the Rust Box drop in ~RustCounter/~RustMonitor, ~Relay) would
+// never reach the .gcda files. This guard is constructed before every default-priority static (init_priority
+// 101), so its libgcov registration and atexit flush are the earliest registrations and the flush runs last.
+struct RustTesterCoverageGuard {
+    RUST_TESTER_NO_PROFILE RustTesterCoverageGuard() { RustTester::registerObjects(); }
+};
+static RustTesterCoverageGuard s_coverageGuard __attribute__((init_priority(101)));
+#endif
+
 // libgcov keeps one process-wide list: register the section's objects exactly once per process, whatever the
 // number of component instances (a second registration would make the list circular and __gcov_reset loop)
 bool RustTester::s_registered = false;
@@ -106,6 +118,7 @@ RUST_TESTER_NO_PROFILE RustTester ::~RustTester() {
 
 RUST_TESTER_NO_PROFILE void RustTester ::init(FwEnumStoreType instance) {
     RustTesterComponentBase::init(instance);
+    // idempotent: the init_priority guard already registered in the twin; this only covers an image without it
     RustTester::registerObjects();
 }
 

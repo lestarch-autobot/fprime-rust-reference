@@ -39,9 +39,10 @@ class RustTester final : public RustTesterComponentBase {
     //! Destroy RustTester object
     ~RustTester();
 
-    //! Initialize the component; in the coverage twin also registers the gcov information section with libgcov
-    //! (once per process) and arranges the exit-time flush. Hides the non-virtual autocoded init: call it on the
-    //! derived type (the topology and the unit tests do)
+    //! Initialize the component. In the coverage twin the libgcov registration and the exit-time flush are done by
+    //! a file-scope guard constructed before every default-priority static (so the flush runs after the static
+    //! destructors); init() repeats the idempotent registration for completeness. Hides the non-virtual autocoded
+    //! init: call it on the derived type (the topology and the unit tests do)
     void init(FwEnumStoreType instance = 0);
 
     //! Whether the image carries a gcov information section (built with FPRIME_RUST_REFERENCE_COVERAGE)
@@ -58,7 +59,8 @@ class RustTester final : public RustTesterComponentBase {
     };
 
   private:
-    friend class RustTesterTester;  //!< white-box unit tests inject a snapshot (UT-RT-7/8) and read object paths (UT-RT-9)
+    friend class RustTesterTester;
+    friend struct RustTesterCoverageGuard;  //!< init_priority(101) registration guard in RustTester.cpp (twin)  //!< white-box unit tests inject a snapshot (UT-RT-7/8) and read object paths (UT-RT-9)
 
     // ----------------------------------------------------------------------
     // Handler implementations for commands
@@ -101,7 +103,8 @@ class RustTester final : public RustTesterComponentBase {
         FILE_PATH     //!< copy the path into m_pathOut (unit tests)
     };
 
-    //! Register the section's objects with libgcov once per process (no-op without instrumentation)
+    //! Register the section's objects with libgcov once per process and install the exit flush (idempotent; no-op
+    //! without instrumentation). Called by the init_priority(101) guard in the twin and again by init()
     static void registerObjects();
 
     //! Flush the in-memory counters into the on-disk .gcda files and zero them (libgcov dump + reset)

@@ -22,7 +22,7 @@ recognises and pages the gcov counters of the instrumented twin image (§3a) bac
 | REQ-RustTester-010 | `DUMP_COVERAGE(start, 0)` shall delete every instrumented object's on-disk `.gcda` file, zero the arc counters, invalidate the snapshot and emit `CoverageReset(objects)` with `OK`; a file that cannot be deleted shall answer `CoverageRejected(FILE_ERROR)` + `EXECUTION_ERROR`. | Unit Test |
 | REQ-RustTester-011 | Every function of the hand-written `RustTester.cpp` shall carry `no_profile_instrument_function`, so the harness logic itself contributes no counters. | Inspection |
 | REQ-RustTester-012 | In the coverage twin, `MARK` shall flush the counters into the on-disk `.gcda` files (libgcov dump) and zero them (reset) after emitting `Marker`, so coverage accumulated before a marker survives the process. | Unit Test; Integration Test |
-| REQ-RustTester-013 | In the coverage twin, `init` shall register every object of the gcov information section with libgcov once per process and arrange a flush at normal process exit. | Inspection |
+| REQ-RustTester-013 | In the coverage twin, every object of the gcov information section shall be registered with libgcov once per process, and a flush shall be arranged at normal process exit that runs after the static destructors of the topology instances, so destructor increments reach the `.gcda` files; the registration shall happen before any default-priority static is constructed (`init_priority(101)` guard) and `init` shall be idempotent. | Inspection; Integration Test |
 
 No general ports: the component has only the command, event and time special ports.
 
@@ -62,8 +62,12 @@ Native persistence = libgcov's hosted on-disk dump/merge (the MCU analogue is co
 `dev-campaign` runs the plan on the twin and the dump plan as two separate processes, and with
 `-fprofile-info-section` nothing is registered or written by itself, so the twin does it explicitly:
 
-- `init` registers the section's objects with libgcov once per process (`__gcov_init`) and installs an `atexit`
-  flush, so a clean exit (SIGINT/SIGTERM handled by `Main.cpp`) writes the tail after the last marker.
+- A file-scope guard in `RustTester.cpp`, constructed with `init_priority(101)` before every default-priority
+  static, registers the section's objects with libgcov once per process (`__gcov_init`) and installs an `atexit`
+  flush. Because atexit handlers and static destructors run in reverse registration order, the earliest
+  registration runs last: a clean exit (SIGINT/SIGTERM handled by `Main.cpp`, `main` returns, the topology's
+  namespace-scope instances are destroyed) flushes the tail after the last marker including the destructor
+  increments (`~RustCounter`/`~RustMonitor` Rust Box drop, `~Relay`). `init()` repeats the idempotent registration.
 - `MARK` emits `Marker(id)` and then calls `__gcov_dump(); __gcov_reset();` — the in-memory counters are merged
   into each object's `.gcda` at the path the compiler recorded (`gcov_info->filename`, under the twin's build
   cache) and restart at zero, so the files are cumulative without double counting (increments between the dump

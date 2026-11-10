@@ -122,3 +122,11 @@ first. Proof: two-process scenario (see the re-entry report). Supersedes the ear
   `GCOV_PREFIX*` unsupported, content not validated beyond non-empty, dump/reset window loses increments, one
   process per cache, `Runs: 0` after an in-process reset, FILE_ERROR UT via chmod, path caching: documented in the
   SDD "Limits of the hosted scheme" (future work); `init` hiding the base init documented in the header.
+
+### Anchor ruling D2'' (destructor coverage)
+Harness run: destructors (`~RustCounter`/`~RustMonitor` Box drop, `~Relay`) never counted — the atexit flush was
+registered from `init()`, after the static topology instances were constructed, so LIFO ran it before their
+destructors. APPLIED: `RustTesterCoverageGuard` with `init_priority(101)` in `RustTester.cpp` registers libgcov and
+the flush before any default-priority static (ON only); `init()` stays idempotent; REQ-RustTester-013 reworded.
+Verified: the topology instances are namespace-scope statics in `FprimeRustReferenceTopologyAc.cpp`, `Main.cpp`
+returns from `main` after the SIGTERM handler; two-process proof shows `gcov -f` hits on the three destructors.
