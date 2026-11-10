@@ -77,6 +77,9 @@ module FprimeRustReference {
     @ Number of rate-group ticks received
     telemetry TickCount: U32 id 1
 
+    @ Validity of THRESHOLD as read by the handler (REQ-RustCounter-007)
+    telemetry ThresholdValid: Fw.ParamValid id 2
+
     # ----------------------------------------------------------------------
     # Parameters
     # ----------------------------------------------------------------------

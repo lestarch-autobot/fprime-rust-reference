@@ -53,6 +53,8 @@ public:
   void bumpMaxNoWrap();
   //! UT-RC-4: THRESHOLD lowered below the counter takes effect on the next BUMP
   void thresholdUpdateTakesEffect();
+  //! UT-RC-6: ThresholdValid DEFAULT before any set, VALID after a set
+  void thresholdValidityReported();
   //! UT-RC-5: three ticks
   void ticks();
 private:

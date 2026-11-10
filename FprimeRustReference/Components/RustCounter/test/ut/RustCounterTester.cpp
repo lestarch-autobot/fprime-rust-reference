@@ -113,6 +113,21 @@ void RustCounterTester::thresholdUpdateTakesEffect() {
     ASSERT_TLM_Counter(1, 3);
 }
 
+void RustCounterTester::thresholdValidityReported() {
+    REQUIREMENT("REQ-RustCounter-007");
+    COMMENT("UT-RC-6: ThresholdValid DEFAULT after loadParameters with no stored value; VALID after PRM_SET");
+    this->clearHistory();
+    this->component.loadParameters();
+    this->bump(1);
+    ASSERT_TLM_ThresholdValid_SIZE(1);
+    ASSERT_TLM_ThresholdValid(0, Fw::ParamValid::DEFAULT);
+    this->paramSet_THRESHOLD(50, Fw::ParamValid::VALID);
+    this->paramSend_THRESHOLD(0, 13);
+    this->bump(1);
+    ASSERT_TLM_ThresholdValid_SIZE(2);
+    ASSERT_TLM_ThresholdValid(1, Fw::ParamValid::VALID);
+}
+
 void RustCounterTester::ticks() {
     REQUIREMENT("REQ-RustCounter-005");
     COMMENT("UT-RC-5: three tick calls: TickCount 1, 2, 3 and Counter written each time; no countOut");

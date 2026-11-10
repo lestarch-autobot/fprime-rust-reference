@@ -11,6 +11,7 @@ TEST(Nominal, UT_RC_1_resetAfterBump) { FprimeRustReference::RustCounterTester()
 TEST(Nominal, UT_RC_2_bumpWithinAndPastThreshold) { FprimeRustReference::RustCounterTester().bumpWithinAndPastThreshold(); }
 TEST(Nominal, UT_RC_3_bumpMaxNoWrap) { FprimeRustReference::RustCounterTester().bumpMaxNoWrap(); }
 TEST(Nominal, UT_RC_4_thresholdUpdateTakesEffect) { FprimeRustReference::RustCounterTester().thresholdUpdateTakesEffect(); }
+TEST(Nominal, UT_RC_6_thresholdValidityReported) { FprimeRustReference::RustCounterTester().thresholdValidityReported(); }
 TEST(Nominal, UT_RC_5_ticks) { FprimeRustReference::RustCounterTester().ticks(); }
 
 int main(int argc, char **argv) {

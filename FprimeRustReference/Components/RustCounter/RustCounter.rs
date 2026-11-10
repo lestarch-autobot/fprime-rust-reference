@@ -13,6 +13,8 @@ impl RustCounter {
     /// Publish the counter and send it on `countOut` (REQ-RustCounter-004)
     fn report(&self, ctx: &mut Context<'_>) {
         ctx.tlmWrite_Counter(self.counter);
+        let (_threshold, valid) = ctx.paramGet_THRESHOLD();
+        ctx.tlmWrite_ThresholdValid(valid);
         ctx.countOut_out(0, self.counter);
     }
 }
