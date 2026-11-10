@@ -99,11 +99,12 @@ void RustMonitorTester::runDrainsQueue() {
 }
 
 void RustMonitorTester::setLimitBusyOnFullQueue() {
+    REQUIREMENT("REQ-RustMonitor-007");
     REQUIREMENT("REQ-FprimeRust-032");
     COMMENT("UT-RM-5: ten SET_LIMITs fill the queue; the eleventh gets BUSY from the Rust overflow hook, no assert; run dispatches the ten");
     this->clearHistory();
-    for (U32 i = 0; i < TEST_INSTANCE_QUEUE_DEPTH; i++) {
-        this->sendCmd_SET_LIMIT(0, i, i + 1);
+    for (FwSizeType i = 0; i < TEST_INSTANCE_QUEUE_DEPTH; i++) {
+        this->sendCmd_SET_LIMIT(0, static_cast<U32>(i), static_cast<U32>(i + 1));
     }
     ASSERT_CMD_RESPONSE_SIZE(0);
     this->sendCmd_SET_LIMIT(0, 99, 42);

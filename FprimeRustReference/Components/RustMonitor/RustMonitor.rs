@@ -44,7 +44,7 @@ impl Component for RustMonitor {
     }
 
     /// Queue full: answer BUSY on the caller's thread; nothing is dropped silently and nothing asserts
-    fn SET_LIMIT_overflow_hook(_ctx: &mut Context<'_>, _opcode: FwOpcodeType, _cmd_seq: u32) -> CmdResponse {
+    fn SET_LIMIT_overflow_hook(_ctx: &mut HookContext<'_>, _opcode: FwOpcodeType, _cmd_seq: u32) -> CmdResponse {
         CmdResponse::Busy
     }
 }

@@ -21,3 +21,16 @@ plan edits are design amendments carried by the DEVELOPMENT child.
 | 13 | `.gitmodules` `branch = main` | KEEP | — |
 | extra | `fprime-cpp-codegen` declared but unused (Captain ruling R5) | RULED: the C++ shim is emitted through `fprime_cpp_codegen` (`Body` / `CppDocBuilder` / `Output`); byte-identical output not required, compile + UT-SHIM-* passing is | `src/fprime_rust/autocode/cpp_shim.py` |
 | extra | UT-BUILD-2 false negative when `lib/fprime` is not initialized | RULED: skip with a named reason when the framework path is absent | `tests/test_build.py` |
+
+## Iteration 2 (delta review of the rulings)
+
+| finding | lens | disposition |
+|---|---|---|
+| D2-1 hooks received the full `Context` (output/internal ports reachable; recursion/self-deadlock) | design | fixed: hooks take `&mut HookContext` (events + telemetry only); SDD name table/§Behavior updated |
+| D2-2 no RustMonitor requirement for BUSY-on-full-queue; stale plan notes | design | fixed: REQ-RustMonitor-007 (SDD + plan.json), UT-RM-5 traces to it; plan `not_covered`/REQ-032 notes updated |
+| D2-3 plan decision 11 still says the alloc-error handler aborts | design | fixed: amended per ruling 4 |
+| D2-4 Linux native list dropped `rt util` | design | fixed: `pthread dl m rt util gcc_s c` (what `rustc --print native-static-libs` reports); SDD R4 updated |
+| D2-5 `last_dispatch()` doc still promised `Empty` | design | fixed |
+| D2-6 R5 partly applied: `extern "C"` blocks and helper definitions pass through `doc.lines` | design | accepted: fprime-cpp-codegen 0.2.0 has no C-linkage scope builder; `doc.lines` is its escape hatch; class, methods, members and includes are built through the library |
+| iteration-2 fprime-code: `U32` loop index against `FwSizeType` queue depth in `RustMonitorTester.cpp` (CPP-3/28) | fprime-code | fixed |
+| iteration-2 fprime-code observation: `libFprimeRust.a` path appended after the Rust archive without re-listing `Fw_Types`/`Fw_Logger` | fprime-code | accepted: those objects are already pulled by the shim and framework objects earlier on the line; all fixtures and the reference link; a configure-time probe stays future work |
