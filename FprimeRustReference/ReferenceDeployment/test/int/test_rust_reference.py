@@ -87,7 +87,7 @@ def test_L2_1(window, send, bench, check, require):
                                                           # whose dispatch row precedes its marker event (A5)
         bracket(bench)
         send(RESET, [])
-        bench.wait_event("rustCounter.ResetIssued")
+        bench.wait(2.0)                                   # pacing only: a planted fault may suppress the event (A12)
         send(BUMP, [7])                                   # bump_wrong_amount / skip_reset act here if L2-1 was drawn
         bench.wait_event("rustCounter.Bumped")
         send(BUMP, [5])
@@ -108,7 +108,7 @@ def test_L2_2(window, send, bench, check, require):
         bench.wait_event("rustCounter.ResetIssued")
         send(THRESHOLD_SET, [5])                          # threshold_not_set acts here if L2-2 was drawn
         send(BUMP, [9])
-        bench.wait_event("rustCounter.Saturated", timeout=10.0)
+        bench.wait(2.0)                                   # pacing only: a planted fault may suppress the event (A12)
         send(THRESHOLD_SET, [100])
         bracket(bench)
         check(ABS)
@@ -204,9 +204,9 @@ def test_L5_1(window, send, bench, check, require):
         bench.wait_event("rustCounter.ResetIssued")
         send(THRESHOLD_SET, [3])
         send(BUMP, [2])                                   # bump_zero acts on both BUMPs if L5-1 was drawn
-        bench.wait_event("rustCounter.Bumped", timeout=10.0)
+        bench.wait(2.0)                                   # pacing only: a planted fault may suppress the event (A12)
         send(BUMP, [2])
-        bench.wait_event("rustCounter.Saturated", timeout=10.0)
+        bench.wait(2.0)                                   # pacing only: a planted fault may suppress the event (A12)
         send(THRESHOLD_SET, [100])
         bracket(bench)
         check(ABS)
@@ -249,7 +249,7 @@ def test_L7_1(window, send, bench, check, require, fth_plan):
         bench.wait_event("cmdDisp.OpCodeDispatched")      # with no file it completes with OpCodeError, never OpCodeCompleted
         bench.wait(5.0)
         send(RESET, [])                                   # skip_reset acts here if L7-1 was drawn
-        bench.wait_event("rustCounter.ResetIssued")
+        bench.wait(2.0)                                   # pacing only: a planted fault may suppress the event (A12)
         bracket(bench)
         check(ABS)
         check("PrmDb.dat record 0x10016000 == 42",
