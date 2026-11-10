@@ -8,3 +8,15 @@ register_fprime_module(
     DEPENDS
         FprimeRustReference_Ports
 )
+
+register_fprime_ut(
+    AUTOCODER_INPUTS
+        "${CMAKE_CURRENT_LIST_DIR}/Relay.fpp"
+    SOURCES
+        "${CMAKE_CURRENT_LIST_DIR}/test/ut/RelayTester.cpp"
+        "${CMAKE_CURRENT_LIST_DIR}/test/ut/RelayTestMain.cpp"
+    DEPENDS
+        FprimeRustReference_Components_Relay
+        STest
+    UT_AUTO_HELPERS
+)

@@ -6,3 +6,15 @@ register_fprime_module(
     DEPENDS
         FprimeRustReference_Ports
 )
+
+register_fprime_ut(
+    AUTOCODER_INPUTS
+        "${CMAKE_CURRENT_LIST_DIR}/RustMonitor.fpp"
+    SOURCES
+        "${CMAKE_CURRENT_LIST_DIR}/test/ut/RustMonitorTester.cpp"
+        "${CMAKE_CURRENT_LIST_DIR}/test/ut/RustMonitorTestMain.cpp"
+    DEPENDS
+        FprimeRustReference_Components_RustMonitor
+        STest
+    UT_AUTO_HELPERS
+)
