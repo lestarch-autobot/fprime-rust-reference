@@ -12,6 +12,7 @@ register_fprime_module(
   SOURCES
     "${CMAKE_CURRENT_LIST_DIR}/FprimeRustReferenceTopology.cpp"
   DEPENDS
+    ReferenceDeploymentCdhCoreConfig
     Fw_Logger
     Svc_PosixTime
     Svc_TlmPacketizer_config_TlmPacketizerConfig

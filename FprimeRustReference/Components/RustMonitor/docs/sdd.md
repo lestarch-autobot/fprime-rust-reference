@@ -67,7 +67,9 @@ rate stays below the 10-per-run queue depth; a flight monitor would publish `ctx
 use `hook` with a dropped-count channel.
 `SET_LIMIT` is declared `hook`: on a full queue (10 queued `SET_LIMIT`s plus counts within one 1 Hz run) its overflow hook
 answers `BUSY` on the caller's thread — no assert, no silent drop (plan decision log 17, amended by DEVELOPMENT ruling 11 after
-the `assert` was reproduced at `RustMonitorComponentAc.cpp:845` with 11 commands in one period). Source files: `RustMonitor.fpp`,
+the `assert` was reproduced at `RustMonitorComponentAc.cpp:845` with 11 commands in one period). The deployment raises
+`CdhCoreConfig.QueueSizes.cmdDisp` to 20 (`ReferenceDeployment/CdhCoreConfig/`): a drain answers up to 10 commands in one burst,
+more than the dispatcher's default 10-deep status queue holds. Source files: `RustMonitor.fpp`,
 `RustMonitor.rs` only.
 
 ### Behavior
