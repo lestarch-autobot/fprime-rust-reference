@@ -76,4 +76,7 @@ module FprimeRustReference {
   instance comDriver: Drv.TcpClient base id 0x10025000
   instance relay: FprimeRustReference.Relay base id 0x10026000
 
+  @ Harness tester: run-start markers and coverage dumps (not UUT)
+  instance rustTester: FprimeRustReference.RustTester base id 0x10027000
+
 }

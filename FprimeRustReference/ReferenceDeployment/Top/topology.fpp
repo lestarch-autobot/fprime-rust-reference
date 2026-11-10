@@ -38,6 +38,7 @@ module FprimeRustReference {
     instance rustCounter
     instance rustMonitor
     instance relay
+    instance rustTester
 
     # ----------------------------------------------------------------------
     # Pattern graph specifiers

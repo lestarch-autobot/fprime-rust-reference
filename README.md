@@ -115,6 +115,27 @@ Before every launch make sure no other deployment/GDS actor is up (`ss -ltnp | g
 processes you started by their PID only. The stimulus must stay blind to the draw: no fixture exposes the
 sealed faults, and `fth verify-plan --tests` refuses a test that names them.
 
+## Harness tester and coverage twin
+
+`FprimeRustReference.RustTester` (`rustTester`, base id 0x10027000, plain C++, `Components/RustTester/`) is the
+harness tester of fprime-system-test-harness §1(4): `MARK(id)` emits `Marker {}` (the fth run-start marker) and
+`DUMP_COVERAGE(start, count)` pages the gcov counters of the judged C++ scope out as `CoverageChunk` /
+`CoverageObject` / `CoverageDumpDone` events in the `fth coverage-system` text contract (§3a). The pure
+reference image (default) carries no instrumentation and answers `CoverageUnavailable`; the coverage twin is a
+second build cache with the `FPRIME_RUST_REFERENCE_COVERAGE` option and a GCC >= 12:
+
+```bash
+cd FprimeRustReference/ReferenceDeployment
+CC=gcc-15 CXX=g++-15 fprime-util generate -DFPRIME_RUST_REFERENCE_COVERAGE=ON --build-cache "$PWD/../../build-fprime-automatic-native-cov"
+fprime-util build --build-cache "$PWD/../../build-fprime-automatic-native-cov" -j8
+# after a run that paced DUMP_COVERAGE windows (8 chunks each, start = 0, 8, 16, ... until CoverageDumpDone):
+fth coverage-system --record <events.jsonl dir> --gcno-root "$PWD/../../build-fprime-automatic-native-cov"     --project-root "$PWD/../.." --filter FprimeRustReference/Components/ --filter lib/fprime-rust/FprimeRust/     --filter build-fprime-automatic-native-cov/FprimeRustReference/Components/ --gcov gcov-15 --out <out>
+```
+
+Both caches install into the same `build-artifacts/` directory, so copy the twin's `bin/` and dictionary aside
+before building the other image. The filter-to-scope mapping and the `.gcno` locations are in
+`Components/RustTester/docs/sdd.md`.
+
 ## License
 
 Apache 2.0 — same as F Prime and `fprime-rust`.

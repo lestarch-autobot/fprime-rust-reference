@@ -19,4 +19,5 @@ register_fprime_module(
     FprimeRustReference_Components_RustCounter
     FprimeRustReference_Components_RustMonitor
     FprimeRustReference_Components_Relay
+    FprimeRustReference_Components_RustTester
 )

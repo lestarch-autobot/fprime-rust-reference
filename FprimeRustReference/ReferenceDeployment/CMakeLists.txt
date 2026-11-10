@@ -14,3 +14,6 @@ register_fprime_deployment(
     DEPENDS
         ${FPRIME_CURRENT_MODULE}_Top
 )
+
+# FPRIME_RUST_REFERENCE_COVERAGE twin: the FprimeRust C++ glue (string/assert bridge) is in the judged scope
+fprime_rust_reference_instrument(FprimeRust)
