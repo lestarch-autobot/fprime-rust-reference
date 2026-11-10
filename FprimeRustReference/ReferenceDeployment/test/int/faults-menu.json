@@ -112,7 +112,7 @@
           "event prmDb.PrmFileSaveComplete(records=1) count == 1",
           "event fileDownlink.FileSent count == 1",
           "PrmDb.dat record 0x10016000 == 42",
-          "event cmdDisp.OpCodeError count == 0"
+          "event fileDownlink.FileOpenError count == 0"
         ]
       },
       "mechanism": "the planned FileHandling.prmDb.PRM_SAVE_FILE is replaced by CdhCore.cmdDisp.CMD_NO_OP: the run starts in a fresh run/FprimeRustReference/ with no PrmDb.dat, so the file is never written, PrmFileSaveComplete is absent, SendFile fails with FileOpenError and completes EXECUTION_ERROR (one OpCodeError), no FileSent occurs, no record/raw/files/fprime-downlink/PrmDb.dat exists and prmdb_record_equals reports FAIL; this is the fault that disturbs the final-state artifact",

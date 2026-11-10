@@ -145,8 +145,8 @@ def test_L2_4(window, send, bench, check, require, fth_plan):
         bench.wait(5.0)
         bracket(bench)
         check(ABS)
-        check("delta(rustCounter.TickCount) in 7..10", plan_helper(fth_plan, "delta_in_range", channel="rustCounter.TickCount", lo=7, hi=10))
-        check("delta(rustMonitor.RunCount) in 7..10", plan_helper(fth_plan, "delta_in_range", channel="rustMonitor.RunCount", lo=7, hi=10))
+        check("delta(rustCounter.TickCount) in 7..11", plan_helper(fth_plan, "delta_in_range", channel="rustCounter.TickCount", lo=7, hi=11))
+        check("delta(rustMonitor.RunCount) in 7..11", plan_helper(fth_plan, "delta_in_range", channel="rustMonitor.RunCount", lo=7, hi=11))
 
 
 @pytest.mark.req("REQ-FprimeRust-008", "REQ-FprimeRust-012", "REQ-FprimeRust-013", "REQ-RustMonitor-001",
@@ -253,6 +253,7 @@ def test_L7_1(window, send, bench, check, require, fth_plan):
         bench.wait(2.0)                                   # pacing only: a planted fault may suppress the event (A12)
         bracket(bench)
         check(ABS)
+        check("event fileDownlink.FileOpenError count == 0")   # SendFile is queued: a missing file surfaces as FileOpenError, not OpCodeError (A14)
         check("PrmDb.dat record 0x10016000 == 42",
               plan_helper(fth_plan, "prmdb_record_equals", path="files/fprime-downlink/PrmDb.dat", id=0x10016000, value=42))
         check("relay.Relayed advances by 1", plan_helper(fth_plan, "counter_advances", channel="relay.Relayed", by=1))

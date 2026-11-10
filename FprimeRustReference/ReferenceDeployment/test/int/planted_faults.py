@@ -206,7 +206,7 @@ def negative_wrong_limit(test_id, command_name, args):
 @planted_fault("threshold_not_saved", applies_to=["L7-1"], cls="uut-state",
       mechanism="the planned FileHandling.prmDb.PRM_SAVE_FILE is replaced by CdhCore.cmdDisp.CMD_NO_OP: the run starts in a fresh run/FprimeRustReference/ with no PrmDb.dat, so the file is never written, PrmFileSaveComplete is absent, SendFile fails with FileOpenError and completes EXECUTION_ERROR (one OpCodeError), no FileSent occurs, no record/raw/files/fprime-downlink/PrmDb.dat exists and prmdb_record_equals reports FAIL; this is the fault that disturbs the final-state artifact",
       fails={
-        "L7-1": ["event prmDb.PrmFileSaveComplete(records=1) count == 1", "event fileDownlink.FileSent count == 1", "PrmDb.dat record 0x10016000 == 42", "event cmdDisp.OpCodeError count == 0"],
+        "L7-1": ["event prmDb.PrmFileSaveComplete(records=1) count == 1", "event fileDownlink.FileSent count == 1", "PrmDb.dat record 0x10016000 == 42", "event fileDownlink.FileOpenError count == 0"],
       }, kind="insert")
 def threshold_not_saved(test_id, command_name, args):
     if test_id == "L7-1" and _is(command_name, "FileHandling.prmDb.PRM_SAVE_FILE"):
