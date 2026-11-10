@@ -99,8 +99,10 @@ fth run --run-dir $OUT/runs/dry --manifest manifest.json --plan $T/plan.json --b
 fth run --run-dir $OUT/runs/clean --manifest manifest.json --plan $T/plan.json --bench $T/bench.json --tests $T --unsealed
 cat $OUT/runs/clean/runner/report.md
 
-# helper known-answer tests (plain pytest; not a plan test, fth never collects it)
-python -m pytest $T/helpers_kat.py -q
+# helper known-answer tests (plain pytest; not a plan test, fth never collects it). -B and
+# no:cacheprovider keep __pycache__/.pytest_cache out of test/int: fth refuses a stimulus dir
+# holding __pycache__ (delete `$T/__pycache__ $T/.pytest_cache` before any fth run/verify-plan/manifest)
+python -B -m pytest $T/helpers_kat.py -q -p no:cacheprovider
 
 # one test only (pytest selection after the fth options)
 fth run --run-dir $OUT/runs/l0-1 --manifest manifest.json --plan $T/plan.json --bench $T/bench.json --tests $T --unsealed -k test_L0_1
