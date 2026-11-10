@@ -99,6 +99,9 @@ fth run --run-dir $OUT/runs/dry --manifest manifest.json --plan $T/plan.json --b
 fth run --run-dir $OUT/runs/clean --manifest manifest.json --plan $T/plan.json --bench $T/bench.json --tests $T --unsealed
 cat $OUT/runs/clean/runner/report.md
 
+# helper known-answer tests (plain pytest; not a plan test, fth never collects it)
+python -m pytest $T/helpers_kat.py -q
+
 # one test only (pytest selection after the fth options)
 fth run --run-dir $OUT/runs/l0-1 --manifest manifest.json --plan $T/plan.json --bench $T/bench.json --tests $T --unsealed -k test_L0_1
 

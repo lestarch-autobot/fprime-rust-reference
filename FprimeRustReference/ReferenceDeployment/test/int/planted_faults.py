@@ -65,8 +65,8 @@ def version_payloads_present(ctx, events):
     seen, bad, refs = [], [], []
     for name in events:
         rows = ctx.window.events(name)
-        if not rows:
-            return False, f"no {name} event in {ctx.window.label}", [], True
+        if not rows:  # a UUT event absent from a complete window is FAIL, not UNVERIFIED (A15 / review S-3)
+            return False, f"no {name} event in {ctx.window.label}", []
         for e in rows:
             v = (e.args or {}).get("version", "")
             seen.append(f"{name}=[{v}]")
