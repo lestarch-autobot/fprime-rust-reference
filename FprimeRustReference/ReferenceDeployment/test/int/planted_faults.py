@@ -203,6 +203,17 @@ def negative_wrong_limit(test_id, command_name, args):
     return args
 
 
+@planted_fault("burst_too_small", applies_to=["L6-2"], cls="stimulus",
+      mechanism="the planned BURST_CMD_U32(12, SET_LIMIT, 7) is sent as BURST_CMD_U32(10, SET_LIMIT, 7): ten commands exactly fill the queue, none is refused, so the overflow hook never answers BUSY; the ten LimitSet(7), the later SET_LIMIT(9) and the final limit are unchanged; BurstSent reads count=10, BurstResponsesOk 10 / BurstResponsesError 0",
+      fails={
+        "L6-2": ["event cmdDisp.OpCodeError(error=BUSY) count == 2", "event rustTester.BurstSent(count=12) count == 1", "last(rustTester.BurstResponsesOk) == 10", "last(rustTester.BurstResponsesError) == 2"],
+      })
+def burst_too_small(test_id, command_name, args):
+    if test_id == "L6-2" and _is(command_name, "rustTester.BURST_CMD_U32") and args[0] == 12:
+        return [10] + list(args[1:])
+    return args
+
+
 @planted_fault("threshold_not_saved", applies_to=["L7-1"], cls="uut-state",
       mechanism="the planned FileHandling.prmDb.PRM_SAVE_FILE is replaced by CdhCore.cmdDisp.CMD_NO_OP: the run starts in a fresh run/FprimeRustReference/ with no PrmDb.dat, so the file is never written, PrmFileSaveComplete is absent, SendFile fails with FileOpenError and completes EXECUTION_ERROR (one OpCodeError), no FileSent occurs, no record/raw/files/fprime-downlink/PrmDb.dat exists and prmdb_record_equals reports FAIL; this is the fault that disturbs the final-state artifact",
       fails={

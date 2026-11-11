@@ -43,6 +43,24 @@
       "ripples_to": {}
     },
     {
+      "name": "burst_too_small",
+      "class": "stimulus",
+      "applies_to": [
+        "L6-2"
+      ],
+      "fails": {
+        "L6-2": [
+          "event cmdDisp.OpCodeError(error=BUSY) count == 2",
+          "event rustTester.BurstSent(count=12) count == 1",
+          "last(rustTester.BurstResponsesOk) == 10",
+          "last(rustTester.BurstResponsesError) == 2"
+        ]
+      },
+      "mechanism": "the planned BURST_CMD_U32(12, SET_LIMIT, 7) is sent as BURST_CMD_U32(10, SET_LIMIT, 7): ten commands exactly fill the queue, none is refused, so the overflow hook never answers BUSY; the ten LimitSet(7), the later SET_LIMIT(9) and the final limit are unchanged; BurstSent reads count=10, BurstResponsesOk 10 / BurstResponsesError 0",
+      "kind": "rewrite",
+      "ripples_to": {}
+    },
+    {
       "name": "limit_not_set",
       "class": "stimulus",
       "applies_to": [
@@ -144,6 +162,7 @@
     "L2-5",
     "L5-1",
     "L6-1",
+    "L6-2",
     "L7-1"
   ]
 }

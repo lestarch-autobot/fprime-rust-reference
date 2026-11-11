@@ -36,6 +36,7 @@ source fprime-venv/bin/activate
 pip install -r requirements.txt
 
 # 2. Generate + build the deployment (cargo must be on PATH)
+pip install -e lib/fprime-rust   # fprime-rust-ac is needed by CMake (N-2)
 fprime-util generate
 fprime-util build -j$(nproc)
 
@@ -172,3 +173,7 @@ before building the other image. The filter-to-scope mapping and the `.gcno` loc
 ## License
 
 Apache 2.0 — same as F Prime and `fprime-rust`.
+
+## Command bursts (A22)
+
+L6-2 drives `rustTester.BURST_CMD_U32(12, 268529664, 7)` (twelve `rustMonitor.SET_LIMIT(7)` copies into cmdDisp's sequencer port 1). Plan rule: never burst an opcode whose target component lacks a `hook`/`drop` overflow policy for it — an `async command` without `hook` asserts when the burst exceeds its queue (FATAL in the twin); burst only hook-protected commands such as `SET_LIMIT`, count <= 12, and send no `rustCounter` command in the 2 s before a burst (`countOut` shares the monitor queue).

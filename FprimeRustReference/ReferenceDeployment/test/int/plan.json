@@ -1,1096 +1,1174 @@
 {
-  "name": "RUST-REF — fprime-rust on FprimeRustReference (native Linux x86_64, fprime-gds)",
-  "status": "L0: desk-checked; bench confirmation pending",
-  "request_and_goals": "\"Spin off a child session to fully implement the Rust component integration as seen in fprime-rust and fprime-rust-referenc on JPL-Devin above. You should pull those repos into lestarch-autobot, and get them running. You must use [Used playbook: F Prime Development Campaign — four lanes from request to run-for-record (!fprime_development_campaign)] to ensure the highest quality with those two pieces. Requirements and design are expected to match fprime-python and fprime-python-reference so I DO NOT NEED TOP APPROVE designs or requirements. Run through rfr with seed [withheld]. You must make sure that fprime-rust-reference contains multiple components written in rust and solve the issue where we get duplicate references because rust is baked into each component. All changes can go directly into main of the new autobot repos. Make sure to update to not use fpp-to-json and switch to the new model.\" \"Keep going and driving until we have a working rust implementation.\" Default goal: a functional Rust-component integration with respect to the description above, proven in system tests (native Linux host, fprime-gds ground system).",
-  "uut": {
-    "repo": "https://github.com/lestarch-autobot/fprime-rust",
-    "path": "lib/fprime-rust",
-    "branch": "main",
-    "sha": "frozen at DEVELOPMENT exit"
-  },
-  "deployment": {
-    "repo": "https://github.com/lestarch-autobot/fprime-rust-reference",
-    "name": "FprimeRustReference",
-    "executable": "FprimeRustReference",
-    "pins": {
-      "lib/fprime": "nasa/fprime devel b188d185ec46699b5fdc0a0666537896a5ea9d47",
-      "lib/fprime-rust": "https://github.com/lestarch-autobot/fprime-rust.git main"
-    }
-  },
-  "markers": {
-    "command": "rustTester.MARK",
-    "event": "rustTester.Marker",
-    "arg": "id"
-  },
-  "event_patterns": {
-    "rustTester.Marker": "^Marker (?P<id>\\d+)$",
-    "cmdDisp.OpCodeError": "Opcode 0x(?P<Opcode>[0-9A-Fa-f]+) completed with error (?P<error>\\w+)$",
-    "version.ProjectVersion": "Project Version: \\[(?P<version>[^\\]]*)\\]$",
-    "version.FrameworkVersion": "Framework Version: \\[(?P<version>[^\\]]*)\\]$",
-    "version.LibraryVersions": "Library Versions: \\[(?P<version>[^\\]]*)\\]$",
-    "rustCounter.Bumped": "RustCounter bumped to (?P<value>\\d+)$",
-    "rustCounter.Saturated": "RustCounter saturated at (?P<value>\\d+) \\(threshold (?P<threshold>\\d+)\\)$",
-    "rustMonitor.LimitSet": "RustMonitor limit set to (?P<limit>\\d+)$",
-    "rustMonitor.InvalidLimit": "RustMonitor rejected limit (?P<limit>\\d+)$",
-    "rustMonitor.LimitExceeded": "RustMonitor count (?P<count>\\d+) exceeds limit (?P<limit>\\d+)$",
-    "prmDb.PrmFileSaveComplete": "Parameter file save completed. Wrote (?P<records>\\d+) records.$",
-    "cmdDisp.OpCodeDispatched": "^(?P<opCode>Opcode 0x[0-9A-Fa-f]+) dispatched to port (?P<port>\\d+)$",
-    "cmdDisp.OpCodeCompleted": "^(?P<opCode>Opcode 0x[0-9A-Fa-f]+) completed$",
-    "rustTester.CoverageUnavailable": "^coverage not compiled into this image$"
-  },
-  "packets": {
-    "RustReference": [
-      "rustCounter.Counter",
-      "rustCounter.TickCount",
-      "rustMonitor.RunCount",
-      "rustMonitor.Limit",
-      "rustCounter.ThresholdValid"
-    ]
-  },
-  "std_complete": [
-    "both markers present",
-    "RustReference samples >= 2"
+ "name": "RUST-REF — fprime-rust on FprimeRustReference (native Linux x86_64, fprime-gds)",
+ "status": "L0: desk-checked; bench confirmation pending",
+ "request_and_goals": "\"Spin off a child session to fully implement the Rust component integration as seen in fprime-rust and fprime-rust-referenc on JPL-Devin above. You should pull those repos into lestarch-autobot, and get them running. You must use [Used playbook: F Prime Development Campaign — four lanes from request to run-for-record (!fprime_development_campaign)] to ensure the highest quality with those two pieces. Requirements and design are expected to match fprime-python and fprime-python-reference so I DO NOT NEED TOP APPROVE designs or requirements. Run through rfr with seed [withheld]. You must make sure that fprime-rust-reference contains multiple components written in rust and solve the issue where we get duplicate references because rust is baked into each component. All changes can go directly into main of the new autobot repos. Make sure to update to not use fpp-to-json and switch to the new model.\" \"Keep going and driving until we have a working rust implementation.\" Default goal: a functional Rust-component integration with respect to the description above, proven in system tests (native Linux host, fprime-gds ground system).",
+ "uut": {
+  "repo": "https://github.com/lestarch-autobot/fprime-rust",
+  "path": "lib/fprime-rust",
+  "branch": "main",
+  "sha": "frozen at DEVELOPMENT exit"
+ },
+ "deployment": {
+  "repo": "https://github.com/lestarch-autobot/fprime-rust-reference",
+  "name": "FprimeRustReference",
+  "executable": "FprimeRustReference",
+  "pins": {
+   "lib/fprime": "nasa/fprime devel b188d185ec46699b5fdc0a0666537896a5ea9d47",
+   "lib/fprime-rust": "https://github.com/lestarch-autobot/fprime-rust.git main"
+  }
+ },
+ "markers": {
+  "command": "rustTester.MARK",
+  "event": "rustTester.Marker",
+  "arg": "id"
+ },
+ "event_patterns": {
+  "rustTester.Marker": "^Marker (?P<id>\\d+)$",
+  "cmdDisp.OpCodeError": "Opcode 0x(?P<Opcode>[0-9A-Fa-f]+) completed with error (?P<error>\\w+)$",
+  "version.ProjectVersion": "Project Version: \\[(?P<version>[^\\]]*)\\]$",
+  "version.FrameworkVersion": "Framework Version: \\[(?P<version>[^\\]]*)\\]$",
+  "version.LibraryVersions": "Library Versions: \\[(?P<version>[^\\]]*)\\]$",
+  "rustCounter.Bumped": "RustCounter bumped to (?P<value>\\d+)$",
+  "rustCounter.Saturated": "RustCounter saturated at (?P<value>\\d+) \\(threshold (?P<threshold>\\d+)\\)$",
+  "rustMonitor.LimitSet": "RustMonitor limit set to (?P<limit>\\d+)$",
+  "rustMonitor.InvalidLimit": "RustMonitor rejected limit (?P<limit>\\d+)$",
+  "rustMonitor.LimitExceeded": "RustMonitor count (?P<count>\\d+) exceeds limit (?P<limit>\\d+)$",
+  "prmDb.PrmFileSaveComplete": "Parameter file save completed. Wrote (?P<records>\\d+) records.$",
+  "cmdDisp.OpCodeDispatched": "^(?P<opCode>Opcode 0x[0-9A-Fa-f]+) dispatched to port (?P<port>\\d+)$",
+  "cmdDisp.OpCodeCompleted": "^(?P<opCode>Opcode 0x[0-9A-Fa-f]+) completed$",
+  "rustTester.CoverageUnavailable": "^coverage not compiled into this image$",
+  "rustTester.BurstSent": "^burst sent: (?P<count>\\d+) x opcode (?P<opcode>[0-9a-fA-F]+)$"
+ },
+ "packets": {
+  "RustReference": [
+   "rustCounter.Counter",
+   "rustCounter.TickCount",
+   "rustMonitor.RunCount",
+   "rustMonitor.Limit",
+   "rustCounter.ThresholdValid"
   ],
-  "abs": {
-    "ABS": [
-      "event cmdDisp.MalformedCommand count == 0",
-      "event cmdDisp.InvalidCommand count == 0",
-      "event cmdDisp.TooManyCommands count == 0"
-    ]
-  },
-  "helpers_module": "planted_faults.py",
-  "requirements": {
-    "REQ-FprimeRust-001": {
-      "tests": [],
-      "verification": "Unit Test",
-      "note": "Unit Test",
-      "rationale": "E1/R1: the annotation is the only switch between a C++ and a Rust component, as `@ fprime-python` is"
-    },
-    "REQ-FprimeRust-002": {
-      "tests": [],
-      "verification": "Unit Test",
-      "note": "Unit Test",
-      "rationale": "E7/R5: no fpp-to-json, model from fprime-fpp-python as fprime-python's model.py does"
-    },
-    "REQ-FprimeRust-003": {
-      "tests": [],
-      "verification": "Unit Test",
-      "note": "Unit Test",
-      "rationale": "R1/R5: the closure fpp-depend already computed is the authoritative import set (fprime-python model.py)"
-    },
-    "REQ-FprimeRust-004": {
-      "tests": [],
-      "verification": "Unit Test",
-      "note": "Unit Test",
-      "rationale": "RS-2 fault: a bad model must stop the build loudly, not generate partial code"
-    },
-    "REQ-FprimeRust-005": {
-      "tests": [],
-      "verification": "Unit Test",
-      "note": "Unit Test",
-      "rationale": "E1/R1: fprime-python integrates through a generated C++ class over the autocoded base; same shape"
-    },
-    "REQ-FprimeRust-006": {
-      "tests": [],
-      "verification": "Unit Test",
-      "note": "Unit Test",
-      "rationale": "R1 / parent REQ-FprimeRust-026: the Rust surface carries the F Prime handler names, as the Python class does"
-    },
-    "REQ-FprimeRust-007": {
-      "tests": [],
-      "verification": "Unit Test",
-      "note": "Unit Test",
-      "rationale": "R1: same .template ergonomics as fprime-python (no fprime-util impl)"
-    },
-    "REQ-FprimeRust-008": {
-      "tests": [
-        "L2-1",
-        "L2-4",
-        "L2-5"
-      ],
-      "verification": "Unit Test; Integration Test: L2-1, L2-4, L2-5",
-      "note": "Unit Test; Integration Test",
-      "rationale": "R1/R4: fprime-python-reference ships active, queued and passive kinds"
-    },
-    "REQ-FprimeRust-009": {
-      "tests": [
-        "L2-3",
-        "L2-4"
-      ],
-      "verification": "Unit Test; Integration Test: L2-3, L2-4",
-      "note": "Unit Test; Integration Test",
-      "rationale": "R1: typed ports incl. Rust↔C++"
-    },
-    "REQ-FprimeRust-010": {
-      "tests": [
-        "L2-3",
-        "L7-1"
-      ],
-      "verification": "Unit Test; Integration Test: L2-3, L7-1",
-      "note": "Unit Test; Integration Test",
-      "rationale": "R1: fprime-python binds every output port"
-    },
-    "REQ-FprimeRust-011": {
-      "tests": [
-        "L2-3",
-        "L2-4",
-        "L7-1"
-      ],
-      "verification": "Integration Test: L2-3, L2-4, L7-1",
-      "note": "Integration Test",
-      "rationale": "R4: at least one connection each direction Rust→C++ and C++→Rust"
-    },
-    "REQ-FprimeRust-012": {
-      "tests": [
-        "L2-1",
-        "L2-5",
-        "L6-1"
-      ],
-      "verification": "Unit Test; Integration Test: L2-1, L2-5, L6-1",
-      "note": "Unit Test; Integration Test",
-      "rationale": "R1/R4: commands"
-    },
-    "REQ-FprimeRust-013": {
-      "tests": [
-        "L2-1",
-        "L2-5",
-        "L5-1",
-        "L6-1"
-      ],
-      "verification": "Unit Test; Integration Test: L2-1, L2-5, L5-1, L6-1",
-      "note": "Unit Test; Integration Test",
-      "rationale": "R1/R4: events"
-    },
-    "REQ-FprimeRust-014": {
-      "tests": [
-        "L2-1",
-        "L2-4",
-        "L4-1"
-      ],
-      "verification": "Unit Test; Integration Test: L2-1, L2-4, L4-1",
-      "note": "Unit Test; Integration Test",
-      "rationale": "R1/R4: telemetry"
-    },
-    "REQ-FprimeRust-015": {
-      "tests": [
-        "L2-2",
-        "L5-1"
-      ],
-      "verification": "Unit Test; Integration Test: L2-2, L5-1",
-      "note": "Unit Test; Integration Test",
-      "rationale": "R1/R4: parameters with validity, as paramGet returns in C++"
-    },
-    "REQ-FprimeRust-016": {
-      "tests": [],
-      "verification": "Unit Test",
-      "note": "Unit Test",
-      "rationale": "E1: the type set of the JPL-Devin MVP; R1: fprime-python exposes F Prime types to the implementation language"
-    },
-    "REQ-FprimeRust-017": {
-      "tests": [],
-      "verification": "Unit Test",
-      "note": "Unit Test",
-      "rationale": "RS-2 fault: fprime-python rejects unbindable elements by name at generation (README)"
-    },
-    "REQ-FprimeRust-018": {
-      "tests": [],
-      "verification": "Unit Test; Inspection",
-      "note": "Unit Test; Inspection",
-      "rationale": "E5/R4: one Rust runtime per deployment, no duplicate references"
-    },
-    "REQ-FprimeRust-020": {
-      "tests": [],
-      "verification": "Unit Test",
-      "note": "Unit Test",
-      "rationale": "R1: same cmake include position as include(FprimePython)"
-    },
-    "REQ-FprimeRust-021": {
-      "tests": [],
-      "verification": "Unit Test",
-      "note": "Unit Test",
-      "rationale": "R1: no .cpp/.hpp written by the user"
-    },
-    "REQ-FprimeRust-022": {
-      "tests": [],
-      "verification": "Unit Test",
-      "note": "Unit Test",
-      "rationale": "RS-2 fault: an imported FPP file changes after generation"
-    },
-    "REQ-FprimeRust-023": {
-      "tests": [],
-      "verification": "Unit Test",
-      "note": "Unit Test",
-      "rationale": "JPL DR-4.11.4.13 thread safety across the FFI; Rust aliasing model"
-    },
-    "REQ-FprimeRust-024": {
-      "tests": [],
-      "verification": "Unit Test",
-      "note": "Unit Test",
-      "rationale": "R1 parity: a Python exception ends the process; JPL DR-4.4.6.8 fault visibility through the assert hook"
-    },
-    "REQ-FprimeRust-025": {
-      "tests": [],
-      "verification": "Unit Test",
-      "note": "Unit Test",
-      "rationale": "RS-2 lifecycle: state must exist before the first handler and be released with the component"
-    },
-    "REQ-FprimeRust-026": {
-      "tests": [],
-      "verification": "Unit Test",
-      "note": "Unit Test",
-      "rationale": "R1: F Prime names so C++ and Rust implementers read the same handler"
-    },
-    "REQ-FprimeRust-027": {
-      "tests": [],
-      "verification": "Unit Test",
-      "note": "Unit Test",
-      "rationale": "R1: cookiecutter/template"
-    },
-    "REQ-FprimeRust-028": {
-      "tests": [],
-      "verification": "Unit Test",
-      "note": "Unit Test",
-      "rationale": "parent REQ-FprimeRust-022: a rerun on an unchanged closure must not change outputs or every build relinks"
-    },
-    "REQ-FprimeRust-030": {
-      "tests": [],
-      "verification": "Unit Test",
-      "note": "Unit Test",
-      "rationale": "R1: fprime-python binds parameterUpdated"
-    },
-    "REQ-FprimeRust-031": {
-      "tests": [],
-      "verification": "Unit Test",
-      "note": "Unit Test",
-      "rationale": "R1 ruling (anchor, round 1): internal ports are bound as in fprime-python"
-    },
-    "REQ-FprimeRust-032": {
-      "tests": [],
-      "verification": "Unit Test",
-      "note": "Unit Test (shim fixtures UT-SHIM-9 and reference UT-RM-5: RustMonitor SET_LIMIT hook answers BUSY)",
-      "rationale": "R1 ruling (anchor, round 1): overflow hooks are bound as in fprime-python"
-    },
-    "REQ-FprimeRust-033": {
-      "tests": [],
-      "verification": "Unit Test",
-      "note": "Unit Test",
-      "rationale": "R1 ruling (anchor, round 1): port return values supported as in fprime-python"
-    },
-    "REQ-FprimeRust-034": {
-      "tests": [],
-      "verification": "Unit Test",
-      "note": "Unit Test",
-      "rationale": "RS-2 fault: fpp-cache/stdout.txt missing, empty or stale"
-    },
-    "REQ-FprimeRust-035": {
-      "tests": [],
-      "verification": "Unit Test",
-      "note": "Unit Test",
-      "rationale": "RS-2 fault: cargo absent on the build host"
-    },
-    "REQ-FprimeRust-036": {
-      "tests": [],
-      "verification": "Unit Test",
-      "note": "Unit Test",
-      "rationale": "RS-2 fault: user .rs does not compile"
-    },
-    "REQ-FprimeRust-037": {
-      "tests": [],
-      "verification": "Unit Test",
-      "note": "Unit Test",
-      "rationale": "R1 ruling (anchor, round 1): strings bounded by carrier capacity; F Prime StringBase truncation semantic chosen over rejection"
-    },
-    "REQ-FprimeRust-038": {
-      "tests": [],
-      "verification": "Unit Test",
-      "note": "Unit Test",
-      "rationale": "R1 ruling (anchor, round 1): F Prime strings are bytes, Rust &str is UTF-8; lossy conversion so no handler sees an error"
-    },
-    "REQ-FprimeRust-039": {
-      "tests": [],
-      "verification": "Unit Test",
-      "note": "Unit Test",
-      "rationale": "RS-2: a deployment including FprimeRust without Rust components (fprime-python skips unmarked deployments)"
-    },
-    "REQ-FprimeRust-040": {
-      "tests": [],
-      "verification": "Inspection",
-      "note": "Inspection",
-      "rationale": "R5: platform constraint stated and inspected"
-    },
-    "REQ-RustCounter-001": {
-      "tests": [
-        "L2-1",
-        "L7-1"
-      ],
-      "verification": "Unit Test; Integration Test: L2-1, L7-1",
-      "note": "Unit Test; Integration Test",
-      "rationale": "R4 commands + events (REQ-FprimeRust-012, -013)"
-    },
-    "REQ-RustCounter-002": {
-      "tests": [
-        "L2-1",
-        "L2-3"
-      ],
-      "verification": "Unit Test; Integration Test: L2-1, L2-3",
-      "note": "Unit Test; Integration Test",
-      "rationale": "R4 commands + events (REQ-FprimeRust-012, -013)"
-    },
-    "REQ-RustCounter-003": {
-      "tests": [
-        "L2-2",
-        "L5-1"
-      ],
-      "verification": "Unit Test; Integration Test: L2-2, L5-1",
-      "note": "Unit Test; Integration Test",
-      "rationale": "R4 parameters (REQ-FprimeRust-015); JPL DR-4.4.7.1 no wrap on a ground-settable U32"
-    },
-    "REQ-RustCounter-004": {
-      "tests": [
-        "L2-1",
-        "L2-3",
-        "L7-1"
-      ],
-      "verification": "Unit Test; Integration Test: L2-1, L2-3, L7-1",
-      "note": "Unit Test; Integration Test",
-      "rationale": "R4 Rust→C++ port (REQ-FprimeRust-010, -011) + telemetry (-014)"
-    },
-    "REQ-RustCounter-005": {
-      "tests": [
-        "L2-4",
-        "L4-1"
-      ],
-      "verification": "Unit Test; Integration Test: L2-4, L4-1",
-      "note": "Unit Test; Integration Test",
-      "rationale": "C++→Rust port (REQ-FprimeRust-009); JPL DR-4.4.6.4 state visible at pass start"
-    },
-    "REQ-RustCounter-006": {
-      "tests": [
-        "L2-2",
-        "L5-1"
-      ],
-      "verification": "Unit Test; Integration Test: L2-2, L5-1",
-      "note": "Unit Test; Integration Test",
-      "rationale": "R4 parameters: update takes effect (REQ-FprimeRust-015)"
-    },
-    "REQ-RustMonitor-001": {
-      "tests": [
-        "L2-5"
-      ],
-      "verification": "Unit Test; Integration Test: L2-5",
-      "note": "Unit Test; Integration Test",
-      "rationale": "R4 commands (REQ-FprimeRust-012), events of two severities (-013)",
-      "waiver": "single covering test (L2-5): one accepted SET_LIMIT per run; redundancy by UT-RM-1"
-    },
-    "REQ-RustMonitor-002": {
-      "tests": [
-        "L6-1"
-      ],
-      "verification": "Unit Test; Integration Test: L6-1",
-      "note": "Unit Test; Integration Test",
-      "rationale": "R4 command rejection path (REQ-FprimeRust-012); L6 negative control",
-      "waiver": "single covering test (L6-1): the negative control is run once; redundancy by UT-RM-2"
-    },
-    "REQ-RustMonitor-003": {
-      "tests": [
-        "L2-3",
-        "L2-5",
-        "L7-1"
-      ],
-      "verification": "Unit Test; Integration Test: L2-3, L2-5, L7-1",
-      "note": "Unit Test; Integration Test",
-      "rationale": "C++→Rust async port (REQ-FprimeRust-009, -011), telemetry (-014)"
-    },
-    "REQ-RustMonitor-004": {
-      "tests": [
-        "L2-5"
-      ],
-      "verification": "Unit Test; Integration Test: L2-5",
-      "note": "Unit Test; Integration Test",
-      "rationale": "events + telemetry (REQ-FprimeRust-013, -014)",
-      "waiver": "single covering test (L2-5): one exceedance per run; redundancy by UT-RM-3"
-    },
-    "REQ-RustMonitor-005": {
-      "tests": [
-        "L2-4",
-        "L4-1"
-      ],
-      "verification": "Unit Test; Integration Test: L2-4, L4-1",
-      "note": "Unit Test; Integration Test",
-      "rationale": "queued kind with Rust-driven dispatch (REQ-FprimeRust-008), sync port (-009)"
-    },
-    "REQ-RustMonitor-006": {
-      "tests": [
-        "L2-5",
-        "L6-1"
-      ],
-      "verification": "Unit Test; Integration Test: L2-5, L6-1",
-      "note": "Unit Test; Integration Test",
-      "rationale": "JPL DR-4.11.2.1 defined initial state; constants row"
-    },
-    "REQ-Relay-001": {
-      "tests": [
-        "L2-3",
-        "L7-1"
-      ],
-      "verification": "Unit Test; Integration Test: L2-3, L7-1",
-      "note": "Unit Test; Integration Test",
-      "rationale": "R4 Rust↔C++ ports both directions (REQ-FprimeRust-011)"
-    },
-    "REQ-Relay-002": {
-      "tests": [
-        "L2-3",
-        "L7-1"
-      ],
-      "verification": "Unit Test; Integration Test: L2-3, L7-1",
-      "note": "Unit Test; Integration Test",
-      "rationale": "observable for L2-3/L7-1 (REQ-FprimeRust-010)"
-    },
-    "REQ-RustMonitor-007": {
-      "tests": [],
-      "verification": "Unit Test",
-      "note": "Unit Test (UT-RM-5); BUSY observed on the bench with 12 SET_LIMITs in one 1 Hz period",
-      "rationale": "DEVELOPMENT ruling 11: SET_LIMIT is an async hook command; a full queue answers BUSY instead of asserting"
-    },
-    "REQ-RustCounter-007": {
-      "tests": [
-        "L2-2",
-        "L5-1"
-      ],
-      "verification": "Integration Test",
-      "note": "L2-2/L5-1 read last(rustCounter.ThresholdValid) == VALID after THRESHOLD_PRM_SET (A17); UT-RC-6 covers DEFAULT before any set",
-      "rationale": "E1/R1: the annotation is the only switch between a C++ and a Rust component, as `@ fprime-python` is",
-      "text": "RustCounter shall publish `ThresholdValid`, the validity of THRESHOLD as read by its handler, with every `Counter` sample (RESET, BUMP and tick)."
-    }
-  },
-  "coverage": {
-    "ut": {
-      "lines_min": 95,
-      "branches_min": 85,
-      "scope": "what fth judges (T5): gcov/gcovr of the UUT's default-config fixture UT project lib/fprime-rust/tests/project via `fprime-util generate --ut && fprime-util check --all --coverage` (C++ fixtures ActiveFix/PassiveFix/QueuedFix exercising the generated shim and runtime glue, plus the F Prime config headers that project compiles). The Rust crates themselves are not gcov-instrumentable; cargo llvm-cov figures are reported informatively in dev-evidence, never judged against this threshold"
-    },
-    "system": {
-      "lines_min": 75,
-      "scope": "what fth judges (T5): the instrumented twin of FprimeRustReference (CMake option FPRIME_RUST_REFERENCE_COVERAGE=ON, GCC >= 12, separate build cache build-fprime-automatic-native-cov) runs the same plan on the native bench; counters are paged out by rustTester.DUMP_COVERAGE (gcov-dump plan) and measured by `fth coverage-system` with --filter FprimeRustReference/Components/ (hand-written Relay.cpp, RustTester.cpp), --filter lib/fprime-rust/FprimeRust/ (glue) and the twin-cache filter for the generated Rust shim RustCounter.cpp/RustMonitor.cpp with the FPP autocode *Ac.cpp excluded (regex build-fprime-automatic-native-cov/FprimeRustReference/Components/.*/(?!.*Ac\\.cpp$)[^/]*\\.cpp$) — FPP autocode is F Prime's, not the UUT's output. The pure RfR image is the OFF build; the Rust handler bodies are outside gcov's reach [I]"
-    },
-    "not_covered_ack": [
-      "L3 reset/persistence across a process restart: the native bench defines no reset row (R7 names flash, dump, gds only); THRESHOLD persistence is proven by the saved file (L7-1), not by a reload",
-      "REQ-FprimeRust-024 panic-abort path: death test in UT only; never planted in the system run (it would end the record)",
-      "REQ-FprimeRust-017/-034/-035/-036 generation and build failure paths: autocoder/build UT only; the reference deployment models only supported elements",
-      "REQ-FprimeRust-030/-031/-032/-033 (parameterUpdated, internal ports, overflow hooks, port return values) and passive Rust components, guarded ports, sync/guarded commands, ACTIVITY_HI/COMMAND/DIAGNOSTIC/FATAL severities: shim UT only; the reference deployment exercises active + queued, async/sync members and three severities"
-    ],
-    "rationale": "UT baseline 95/85 from fprime-system-test-design; system 75 because the deployment's Svc/Drv framework code shares the executable and only the Rust integration surface is judged"
-  },
-  "image_version": {
-    "policy": "required",
-    "reason": "CdhCore.Subtopology instantiates Svc.Version; L0-1 compares ProjectVersion/LibraryVersions with the manifest describe strings"
-  },
-  "final_state": {
-    "accepted_evidence": "L7-1: record/raw/files/fprime-downlink/PrmDb.dat (downlinked by FileHandling.fileDownlink.SendFile into the GDS --file-storage-directory {logs}/files) parsed by prmdb_record_equals: record 0x10016000 == 42; plus PrmFileSaveComplete(records=1) and FileSent in the window",
-    "rationale": "Anchor ruling E-1 (round 1): the final state is a UUT state file. fth v0.1.2 run.flash() hashes the bench `dump` read-back against the manifest image at flash time (run.py: 'read-back differs from image'), so `dump` must read the installed executable; the parameter file therefore leaves the UUT by file downlink inside the L7-1 window and the prmdb_record_equals helper check parses record/raw/files/fprime-downlink/PrmDb.dat (Svc/PrmDb/docs/sdd.md §3.2 record format) for THRESHOLD == 42 independently of the UUT's events and telemetry (an absent file on a complete window is FAIL — no file was downlinked; FAIL on a CRC32, delimiter, missing-id or value mismatch); the planted fault threshold_not_saved disturbs exactly this artifact."
-  },
-  "max_planted_faults": 2,
-  "levels": {
-    "L0": "provenance (image identity, markers)",
-    "L2": "functional (commands, events, telemetry, parameters, ports both directions, queued kind, rate groups)",
-    "L4": "endurance 60 s",
-    "L5": "fault path (saturation)",
-    "L6": "negative control (rejected command)",
-    "L7": "final state (PrmDb.dat saved + downlinked; executable read-back at flash)"
-  },
-  "not_covered": [
-    "L3 reset/persistence (no reset row on the native bench)"
-  ],
-  "decision_log": [
-    "1. Captain R1 (2026-11-09): Approve-SDD waived; design matches fprime-python (annotation, cmake shape, autocoder closure from fpp-cache/stdout.txt, .fpp+.rs ergonomics, cookiecutter, test/int).",
-    "2. Captain R4 (2026-11-09): ≥2 Rust components (RustCounter active, RustMonitor queued) + C++ Relay for Rust→C++ and C++→Rust ports; ONE Rust runtime per deployment via a deployment-level Cargo workspace (member rlibs, one staticlib root). Alternatives rejected in fprime-rust docs/sdd.md §Design.",
-    "3. Captain R5 (2026-11-09): no fpp-to-json / FPRIME_ENABLE_JSON_MODEL_GENERATION; fprime-fpp-python==4.0.1 + fprime-cpp-codegen==0.2.0; wheel platform constraint stated in the SDD. Spike on the campaign host: import + fpp.analyze clean with the fpp-depend closure.",
-    "4. Captain R7 (2026-11-09): native Linux x86_64 bench, fprime-gds, no hardware; bench.json flash/dump/gds/recorder/send as recorded; native executable (no suffix) is the manifest image; image_version required.",
-    "5. Captain (2026-11-09): pin lib/fprime to nasa/fprime devel b188d185ec46699b5fdc0a0666537896a5ea9d47 and lib/fprime-rust to lestarch-autobot/fprime-rust main; submodule edit is DEVELOPMENT work.",
-    "6. Author (2026-11-10): markers use CdhCore.cmdDisp.CMD_NO_OP_STRING / NoOpStringReceived so bracketing does not depend on the UUT's own command path; no helper component.",
-    "7. Author (2026-11-10): L3 not covered — the native bench has no reset row; acknowledged in coverage.not_covered_ack. Recommended ruling: accept, or add a reset row (kill + relaunch via gds) in DEVELOPMENT if persistence proof is wanted.",
-    "8. Author (2026-11-10, revised round 1): REQ-FprimeRust-018 (one Rust runtime per executable) is verified by Inspection of the build (UT-BUILD-1: exactly one libfprime_rust_<Deployment>.a on the link line, `nm` shows one definition of rust_begin_unwind, no duplicate-symbol diagnostics); L0-1 is an entry gate.",
-    "9. Author (2026-11-10, revised round 1): max planted faults per run = 2; menu holds 7 faults ≥ 2×2; every system-covered requirement has ≥2 covering tests with disjoint planted-fault sets or a waiver note; ripples stated per fault (every functional test opens with RESET or an explicit SET_LIMIT, which insulates it from the previous test's residue).",
-    "10. Author (round 1, revised round 2): component SDD requirement tables kept (anchor E-2); every REQ-RustCounter/RustMonitor/Relay id traced here with rationale. fth v0.1.2 `verify-plan --sdd` takes one baseline file, so the gate runs against the mechanical concatenation of the four committed SDDs, in this order and with this command from the reference root, with the precondition that `lib/fprime-rust` is checked out at the fprime-rust `campaign/design` DESIGN head (the committed submodule pin still points at JPL-Devin until the DEVELOPMENT repoint, decision 14): `cat lib/fprime-rust/docs/sdd.md FprimeRustReference/Components/RustCounter/docs/sdd.md FprimeRustReference/Components/RustMonitor/docs/sdd.md FprimeRustReference/Components/Relay/docs/sdd.md > /tmp/sdd-concat.md && fth verify-plan FprimeRustReference/ReferenceDeployment/test/int/plan.json --sdd /tmp/sdd-concat.md`; expected last line: `requirements ok: 52 plan requirement ids all in the SDD table (52 rows) of /tmp/sdd-concat.md`.",
-    "11. Author (round 1, revised round 2): unconnected output port invoked from Rust is owned by the autocoded component base (FW_ASSERT in X_out, F Prime user manual, ports); Rust sees the same abort as C++ (REQ-FprimeRust-024); Relay guards countOut with isConnected_countOut_OutputPort(). Rust allocation failure: aborts via std (no F Prime hook; stable Rust has no alloc_error_handler — amended by DEVELOPMENT ruling 4). THRESHOLD persistence in PrmDb.dat is owned by the autocoded parameter base (THRESHOLD_PRM_SAVE -> prmSetOut) and Svc.PrmDb (PRM_SAVE_FILE, Svc/PrmDb/docs/sdd.md); L7-1 parses the downlinked file as final-state evidence (covers_note), not as a RustCounter requirement.",
-    "12. Author (round 1): `@ fprime-rust` on a non-component element is ignored (UT-AC-1). THRESHOLD invalid/absent in prmDb: FPP default 100 applies (framework parameter semantics). RustMonitor queue full: countIn drops (FPP `drop`), SET_LIMIT asserts (F Prime default; amended by decision 17: hook → BUSY); Relay countOut unconnected: count dropped, Relayed still counts.",
-    "13. Author (round 1): bench `dump` reads the installed executable because fth v0.1.2 flash() requires read-back sha256 == image sha256; final state is the in-band PrmDb.dat save + file downlink (see final_state). NEW elicitation finding for the anchor.",
-    "14. Author (round 1): lib/fprime-rust submodule URL changes from https://github.com/JPL-Devin/fprime-rust.git (branch devin/1778113254-initial-import) to https://github.com/lestarch-autobot/fprime-rust.git branch main, and lib/fprime is pinned to nasa/fprime b188d185ec46699b5fdc0a0666537896a5ea9d47 — both DEVELOPMENT edits. bench/native_flash.py and bench/native_dump.py are design items DEVELOPMENT creates and the package pins.",
-    "15. Author (round 1): L0-1 judges that version events are present with non-empty payloads; equality with manifest repos[].describe is the fth deliver/audit dictionary-describe check (fth v0.1.2 engine has no manifest-substituted predicate), declared by image_version policy required.",
-    "16. Author (round 1): the fpp-check gate ran on the full closure (reference FPP + nasa/fprime b188d185 Fw/Svc/Drv/Os/Utils/CFDP/default/Fpp/cmake + unix PlatformTypes.fpp, fpp-check v4.0.0a1 = the pin's requirements.txt) — clean; topology uses `deployment topology` (accepted by fpp 4.0.0a1).",
-    "17. Author (round 2): RustMonitor.SET_LIMIT keeps the F Prime default `assert` on queue full (every async command in the deployment, CdhCore included, shares it); operational bound: fewer than 10 SET_LIMITs plus counts queued within one 1 Hz run (queue depth Default.QUEUE_SIZE = 10); countIn is `drop` without trace (a missed comparison is accepted for the reference; a flight monitor would use `hook` with a dropped-count channel). Planted-fault classes: threshold_not_set, bump_zero, limit_not_set are stimulus faults (command rewrites reset within the test); threshold_not_saved is the uut-state fault. — amended DEVELOPMENT: SET_LIMIT hook → BUSY, reproduced assert at RustMonitorComponentAc.cpp:845 (11 SET_LIMITs in one 1 Hz period aborted the deployment); SET_LIMIT is now `async … hook` and its Rust overflow hook responds BUSY (anchor ruling 11). Bench (DEVELOPMENT iteration 2): a full RustMonitor drain answers up to 10 commands in one burst and overflowed CdhCore.cmdDisp's 10-deep compCmdStat queue (CommandDispatcherComponentAc.cpp:1132 assert); the reference overrides CdhCoreConfig.QueueSizes.cmdDisp = 20 (ReferenceDeployment/CdhCoreConfig/). 12 commands within ~4 ms still overflow the dispatcher's own command queue (framework default), independent of RustMonitor.",
-    "18. Author (round 2): queued dispatch shape — the generated sync/guarded entry of a queued Rust component drains the base queue (dispatchAvailableMessages()) under the one instance lock before constructing &mut Implementation; async entries of queued components take no lock; so no two &mut Implementation are live (fprime-rust SDD §Behavior; UT-SHIM-6, UT-RT-4 Miri).",
-    "19. Harness amendment A1 (stage 2, bench-verified 2026-11-10, reviewer to confirm): event names use fth v0.1.2's short form (last two dotted parts, fth.replay.short_name; the engine matches e.short == name): CdhCore.cmdDisp.* -> cmdDisp.*, CdhCore.version.* -> version.*, FileHandling.prmDb.* -> prmDb.*, FileHandling.fileDownlink.* -> fileDownlink.* in markers.event, event_patterns, std_complete, abs, metrics and planted-fault fails. Pass rules unchanged; the record names stay the dictionary's (CdhCore.cmdDisp.NoOpStringReceived). Commands are sent by full dictionary name (fprime-cli refuses suffixes: 'cmdDisp.CMD_NO_OP_STRING is not a known command'), so bench.json deployment is empty and markers.command stays CdhCore.cmdDisp.CMD_NO_OP_STRING.",
-    "20. Harness amendment A2 (stage 2, bench-verified 2026-11-10, reviewer to confirm): fprime-gds 4.4.0 stores downlinked files under --file-storage-directory/fprime-downlink/, so the final-state artifact is record/raw/files/fprime-downlink/PrmDb.dat (helper arg path; check text 'PrmDb.dat record 0x10016000 == 42' unchanged). bench.json dictionary path corrected to the built tree's build-artifacts/Linux/FprimeRustReference_ReferenceDeployment/dict/.",
-    "21. Harness amendment A3 (stage 2, bench-verified 2026-11-10, reviewer to confirm): the first bench record exported 0 events/0 channels (161/161 event rows, 3957/3957 channel rows unparsed) because fth 0.1.2's exporter reads only TB_PROC_TIME rows while the deployment's Svc.PosixTime stamps TB_WORKSTATION_TIME (fprime-gds prints an ISO date). The fth pin and the deployment are frozen, so the bench recorder is bench/native_recorder.py: fprime-cli events runs unchanged (its output is kept verbatim under record/raw/recorder-native/) and every row is re-rendered from its own (tb(ctx)-sec:usec) stamp into the TB_PROC_TIME row form — same rows, same order, same names, ids and payloads; the fsw clock fth orders by is the row's wall-clock seconds. No pass rule, threshold or fails set changes. Design-stage note for the anchor: the fth time-base assumption vs PosixTime was not caught at design.",
-    "22. Harness amendment A4 (stage 2, bench-verified 2026-11-10, reviewer to confirm): with A3 in place every window read UNVERIFIED on the STD predicate `commands_sent == count(event cmdDisp.OpCodeDispatched)` with commands_sent=0: fth 0.1.2 slices a window's commands by comparing the marker command row's first logged argument with the marker id as an integer, and fprime-gds logs the CMD_NO_OP_STRING argument as a string (['20']). The dictionary has no inert command with one integer argument (BUMP, THRESHOLD_PRM_SET and SET_LIMIT all mutate state), so the marker stays CMD_NO_OP_STRING and the bench sender is bench/native_send.py: fprime-cli command-send runs unchanged (its log kept verbatim under record/raw/cmd/send-native/) and the command row is logged with the arguments as given on the command line, decimal integers as integers ([20]); names, opcodes, stamps and every other argument are unchanged. No pass rule, threshold or fails set changes. Recommendation for the anchor: fth should compare marker arguments as text (replay._is_marker_cmd), which would retire A4. Same amendment: `markers.command` is the fth short form cmdDisp.CMD_NO_OP_STRING (fth compares it with the command row's short name — the full name never matched, commands_sent=0 on every window); the sender resolves the short name fth sends to the one dictionary command ending in it, so the marker still goes out as CdhCore.cmdDisp.CMD_NO_OP_STRING.",
-    "23. Harness amendment A5 (stage 2, bench-verified 2026-11-10, reviewer to confirm): with A3/A4 in place every window read UNVERIFIED on the plan-wide STD predicate `commands_sent == count(event cmdDisp.OpCodeDispatched)` with count = commands_sent - 1 (record 329bab5d: L0-1 3 vs 2, L2-1 5 vs 4). fth counts OpCodeDispatched rows between the two marker events; on this UUT Svc.CommandDispatcher logs OpCodeDispatched before it queues CMD_NO_OP_STRING to itself, so the START marker's own dispatch row (40 us earlier than NoOpStringReceived) is outside the window and the END marker's is inside — deterministically commands_sent - 1. The predicate is replaced by two per-window predicates with the exact numbers, declared in every window: require `commands_sent == N` (sender log: N = stimulus commands + both markers) and check `event cmdDisp.OpCodeDispatched count == N-1` (the UUT dispatched every command but the START marker, whose row precedes the window). N is fixed per window (planted faults substitute commands one for one, never add or drop), so the checks are at least as strong as the plan-wide predicate; `both markers present` and `RustReference samples >= 2` stay in std_complete. No pass rule, threshold or fails set weakens.",
-    "24. Harness amendment A6 (stage 2, bench-verified 2026-11-10, reviewer to confirm): with A5 in place every window read UNVERIFIED on `RustReference samples >= 2` with `RustReference samples=0` (record ff0bcbe8). fth takes the minimum sample count over the packet's channels; Svc.TlmChan downlinks only channels written since its last cycle, and rustMonitor.LastCount, rustMonitor.Exceedances and relay.Relayed are written only when a count arrives or the limit trips (record ff0bcbe8: 13, 1 and 13 samples in 180 s against 190 of each 1 Hz channel), so a window without a BUMP (L0-1, L0-2, L2-4, L4-1, L6-1) can never show two of them. The packet `RustReference` is reduced to the four channels the rate group writes every cycle — rustCounter.Counter, rustCounter.TickCount, rustMonitor.RunCount, rustMonitor.Limit — which is what `samples >= 2` was there to establish (the window brackets at least two telemetry cycles); the event-driven channels keep being judged by the per-test `last(...)`/`delta(...)` checks that name them. No pass rule, threshold or fails set weakens.",
-    "25. Harness amendment A7 (stage 2, bench-verified 2026-11-10, reviewer to confirm), record df7d421e, two findings. (a) fth 0.1.2 judges a test's plan `metrics` by text alone at window close (fth/checks.py judge(): PredSpec(name) without the helper binding), so every helper-bound metric raised `PlanError: unparsable predicate` (L0-1, L2-4, L4-1, L7-1 FAIL); moving them to `all_of` is refused too (a test-owned plan must not mix in plan-owned checks: it would lose the stimulus pin and the replay auditor). Helper-bound checks therefore leave the plan's `metrics` lists and are declared by the stimulus with check(text, helper) — same text, helper and args, bound through this plan's helpers module (planted_faults.py), judged at window close and by the auditor's replay of the tests, verbatim in the planted-fault `fails` sets (verify-plan --tests) — and each is documented in the test's `rationale` as a stimulus-declared helper check: L0-1 `version payloads of ProjectVersion, FrameworkVersion, LibraryVersions are non-empty and not UNKNOWN`; L2-3 `relay.Relayed advances by 2`; L2-4 `delta(rustCounter.TickCount) in 4..8`; L2-4 `delta(rustMonitor.RunCount) in 4..8`; L2-5 `rustMonitor.Exceedances advances by 1`; L4-1 `delta(rustCounter.TickCount) in 55..65`; L4-1 `delta(rustMonitor.RunCount) in 55..65`; L6-1 `rustMonitor.Exceedances advances by 0`; L7-1 `PrmDb.dat record 0x10016000 == 42`; L7-1 `relay.Relayed advances by 1`. (b) `delta(ch) == n` is last-minus-first inside the window and relay.Relayed / rustMonitor.Exceedances are change-driven (written only when they move; TlmChan sends only written channels), so the window's first sample already carries the first step: L2-3 `delta(relay.Relayed) == 2` read delta=1 (first=6 last=7: the RESET's relay is the first sample), L2-5 `delta(rustMonitor.Exceedances) == 1` had 1 sample, L6-1 `delta(rustMonitor.Exceedances) == 0` had 0 samples (both UNVERIFIED-class → FAIL on a complete window). These four predicates (also L7-1 `delta(relay.Relayed) == 1`) become the helper `counter_advances(channel, by)` — `relay.Relayed advances by 2` etc.: last sample in the window minus the last sample before the START marker anywhere in the record (boot value 0 when never sent: Relay::m_relayed(0), RustMonitor exceedances: 0); no sample in a complete window is the proof of no write (advance 0). This judges the very increment the rationale describes (RESET and BUMP relay once each) and is not weaker than delta: it still requires the exact advance and a baseline. Planted-fault `fails` sets rename the four predicates verbatim (negative_wrong_limit/limit_not_set/skip_reset keep the same number of fails). No pass rule, threshold or fails set weakens.",
-    "26. Harness amendment A8 (stage 2, bench-verified 2026-11-10, reviewer to confirm): L2-4 `delta(rustCounter.TickCount) in 4..8` and `delta(rustMonitor.RunCount) in 4..8` read delta=9 (record 9ecae84d, C1310->C1476 and C1307->C1474) on a window that follows the plan's own procedure — bracket (2 samples), wait 5 s, bracket (2 samples): each bracket adds 1-2 s of 1 Hz samples to the 5 s wait, so the window spans 7-9 s and a 1 Hz rate group must advance 7..9, 10 with one sample of phase jitter. The 4..8 bound was an arithmetic slip against that procedure (the L4-1 analogue 55..65 for a 60 s wait is consistent). Corrected to 7..10 for both: a 4-wide band around the actual window instead of a 5-wide band below it — it rejects a stalled or doubled rate group exactly as the original intended, and is not weaker. Check names change verbatim in the stimulus and rationale; L2-4 has no planted fault.",
-    "27. Harness amendment A9 (stage 2, bench-verified 2026-11-10, reviewer to confirm): L7-1 `PrmDb.dat record 0x10016000 == 42` read `CRC32 mismatch: stored 0x4ceb3a87, computed 0xb314c578` on record 9e5eaa07 whose downlinked record/raw/files/fprime-downlink/PrmDb.dat (17 bytes: 4ceb3a87 a5 00000008 10016000 0000002a) is well-formed. Svc.PrmDb (lib/fprime b188d18, Svc/PrmDb/PrmDbImpl.cpp PrmFileSave) writes `~crc.finalize()` of the record bytes with Utils::Hash = Crc32 (init 0xFFFFFFFF): the CRC-32 of the records WITHOUT the final inversion, i.e. zlib.crc32(records) ^ 0xFFFFFFFF = 0x4ceb3a87 exactly. The helper prmdb_record_equals computes that value (the oracle's algorithm corrected to the UUT's documented one; the check still rejects any altered byte of the file, the record format and the value 42 are unchanged). Also fixed in the same helper: the live plugin judges a temporary export of record/raw, so the file is resolved from the pytest argv fth records (--fth-run-dir / --fth-replay-record) with record.path/raw as the first candidate (record 9ecae84d read `absent from record/raw` with the file present). No pass rule, threshold or fails set weakens.",
-    "28. Harness amendment A10 (stage 2, bench-verified 2026-11-10, reviewer to confirm): on the first all-PASS record e8a385cf, `fth audit --tests` read DIVERGENCE on 10 of 11 tests (runner PASS, replay FAIL `event cmdDisp.OpCodeDispatched count == N-1` with count N; L2-4/L4-1 tick deltas 12 instead of 9/10). Cause: fth 0.1.2's window slicer scans up to 8 event rows past the END marker for the marker command's own dispatcher rows (OpCodeCompleted/OpCodeDispatched, stopping at the first OpCodeDispatched), built for a synchronous marker component (fth's framTester: Marker, then OpCodeCompleted, then OpCodeDispatched). This UUT's only marker-capable command is Svc.CommandDispatcher's own CMD_NO_OP_STRING, dispatched to itself asynchronously, so the order is OpCodeDispatched, NoOpStringReceived, OpCodeCompleted: the END marker's Dispatched row already precedes its event and the scan instead swallows the NEXT test's START-marker Dispatched row (same opcode), which exists in the replayed record but not yet at live window close. Without an `opCode` argument on those rows fth attributes every dispatcher row to the marker; the plan therefore declares event_patterns for cmdDisp.OpCodeDispatched and cmdDisp.OpCodeCompleted whose `opCode` group is the row's textual token (`Opcode 0x1000001`), never the marker's integer opcode, so no dispatcher row past the END marker is attributed to it and every window ends exactly at its END marker event, live and replayed alike. The per-window `event cmdDisp.OpCodeDispatched count == N-1` predicates (A5) are unchanged: the START marker's row precedes the window, the END marker's row is inside. Known fth 0.1.2 limits recorded for the reviewer, not fixable in the harness: `fth vectors` judges with the engine, which refuses a test-owned plan (checks live in the tests), and the audit's run-start-marker step recognises only `*.Marker` events (seal.marker_ids), so it reads FAILED by construction with the NoOpStringReceived marker although the six run-start marker ids (0xFFFF0001 + manifest sha8, 0xFFFF0002 + seal, 0xFFFF0003 + crc32(run id)) are in every record. No pass rule, threshold or fails set weakens.",
-    "29. Harness amendment A11 (stage 2, bench-verified 2026-11-10, reviewer to confirm): on the first planted-fault vector (dry-1, L2-1 bump_wrong_amount, record f4e440f0) every failed predicate appeared twice in the runner's `failed` list, so the list was not byte-equal to the declared `fails` set (fth vectors/unseal compare sorted lists). fth 0.1.2 judges a window's plan `metrics` by name at window close AND every check() the stimulus declares; a predicate present in both is judged twice. The stimulus therefore no longer re-declares the plan's `metrics` strings (49 check() calls removed); it declares only what the plan cannot judge by name — the completeness preconditions (STD, commands_sent, OpCodeDispatched count), the ABS group and the helper-bound checks (A7). The set of judged predicates per window is unchanged (verify-plan --tests still harvests every planted-fault `fails` predicate as declared); no pass rule, threshold or fails set weakens.",
-    "30. Harness amendment A12 (stage 2, bench-verified 2026-11-10, reviewer to confirm): vector dry-3 (L5-1 with bump_zero, record 8772425e...) read UNVERIFIED instead of FAIL: the stimulus paced on `bench.wait_event(\"rustCounter.Saturated\")`, an event the planted fault suppresses, fth's wait raised TimeoutError inside the window, the END marker went out from the plugin's finally but THRESHOLD_PRM_SET(100) was never sent, and the completeness precondition `commands_sent == 7` read 6 — an infrastructure UNVERIFIED masking the planted fault's FAIL. The same pattern exists where skip_reset suppresses ResetIssued (L2-1, L7-1) and threshold_not_set suppresses Saturated (L2-2). Those five pacing waits become `bench.wait(2.0)`: send() already waits for the command's OpCodeCompleted/OpCodeDispatched rows (the UUT emits ResetIssued/Bumped/Saturated synchronously in the handler, before completion), so pacing is unchanged for the clean run, and the checks — judged from the record, not from the waits — still require the events (`event rustCounter.Saturated(value=3, threshold=3) count == 1` etc.). No pass rule, threshold or fails set weakens.",
-    "31. Harness amendment A13 (stage 2, bench-verified 2026-11-10, reviewer to confirm), vectors dry-7/dry-8 after A12. (a) dry-7 (L7-1 with skip_reset): `last(rustMonitor.LastCount) == 0` read `no samples of rustMonitor.LastCount` and stayed UNVERIFIED-class instead of FAIL, so the runner's failed list lacked one declared fails predicate: fth 0.1.2 promotes a sample-less check to FAIL on a complete window only for checks the stimulus declares (fth/checks.py judge()), not for plan `metrics`. That one predicate moves from L7-1's metrics to a stimulus check(); its text and the fails set are unchanged. (b) dry-8 (L7-1 with threshold_not_saved): `PrmDb.dat record 0x10016000 == 42`, `event fileDownlink.FileSent count == 1` and `event cmdDisp.OpCodeError count == 0` held although PRM_SAVE_FILE was never sent, because the deployment's PrmDb.dat (written in the app's working directory run/FprimeRustReference/) survived from the previous run; bench/native_flash.py now empties the install directory before installing the executable, as bench.json's provenance note already states (fresh PrmDb.dat per run), so the absent-file FAIL the plan requires is reachable. No pass rule, threshold or fails set weakens.",
-    "32. Harness amendment A14 (stage 2, bench-verified 2026-11-10, reviewer to confirm). (a) Vector dry-8 (L7-1 with threshold_not_saved, record after A13): the absent-file FAIL now occurs (`PrmDb.dat record 0x10016000 == 42` FAIL, `event fileDownlink.FileSent count == 1` FAIL, `event prmDb.PrmFileSaveComplete(records=1) count == 1` FAIL) but the fourth declared predicate `event cmdDisp.OpCodeError count == 0` held: the record shows FileHandling.fileDownlink.FileOpenError WARNING_HI `Could not open file PrmDb.dat` and no OpCodeError, because Svc.FileDownlink's SendFile is a queued request acknowledged OK before the open. The fault's L7-1 fails entry swaps that predicate for `event fileDownlink.FileOpenError count == 0`, which the L7-1 stimulus now declares as a check (clean record: 0 FileOpenError); the set keeps four predicates, three of them unchanged — nothing that failed before stops failing. (b) Stage-3 rehearsal reh2 (manifest 76fb96c5, record 018de76e): L2-4 diverged, runner PASS `delta=10 (first=87 C1375; last=97 C1546)` vs replay FAIL `delta=11 (first=87 C1375; last=98 C1548)`. L2-4 `delta(rustCounter.TickCount) in 7..10` / `delta(rustMonitor.RunCount) in 7..10` become `in 7..11`. The rate group is 1 Hz (Main.cpp startRateGroups(TimeInterval(1,0)), divider 1; TickCount samples 1.000 s apart in every record). The window is START marker event .. END marker event; the stimulus between them is bracket (2 fresh samples: 1-2 s), wait 5 s, bracket (2 fresh samples: 1-2 s) plus the two marker command latencies, i.e. 7-9 s of stimulus, and the END marker event can land after one more 1 Hz tick, so the recorded advance is 7..11 (reh2 sealed record: 11, first=87 C1375 last=98 C1548; the live view read 10 because the recorder had not flushed the last row — the record is the oracle). The lower bound 7 is unchanged: a stalled or half-rate group (<= 4) and a doubled rate group (>= 14) are still rejected. This is a pass-rule threshold change and is submitted to the human gate with A8 (4..8 -> 7..10, an arithmetic slip against the plan's own procedure), not confirmed by the reviewer alone. (Rationale rewritten after reviewer round 1 S-5; the earlier text stated a wrong rate-group frequency.)",
-    "33. Harness amendment A15 (stage 2, reviewer round 1, 2026-11-10, reviewer to confirm). Harness-local, no pass rule weakened. (F-1) `helpers_kat.py` adds known-answer tests for every helper predicate, pass and fail paths, through real fth Record/Window/HelperContext objects on synthetic rows: delta_in_range (delta == lo, == hi, lo-1, hi+1, negative, < 2 samples -> UNVERIFIED), counter_advances (baseline before START, boot value 0, silent window with by=0/by=1, no START marker -> UNVERIFIED), version_payloads_present (good, empty, UNKNOWN, absent event), prmdb_record_equals on the dev-clean 17-byte PrmDb.dat (4ceb3a87 a5 00000008 10016000 0000002a: as-is PASS; wrong value, flipped CRC byte, unrecomputed body byte, bad delimiter, missing id, 3-byte file, absent file -> FAIL, absent file FAIL not UNVERIFIED). The file name is outside pytest's `test_*.py` glob so `fth run`/`verify-plan` do not collect it; run with `python -m pytest test/int/helpers_kat.py -q` (README). (S-1) the same module asserts that every `rationale[].pred` tagged stimulus-declared is harvested from the stimulus (`fth.junit.harvest_check_names`), guarding the A7 helper checks that are in no fails set. (S-3) `version_payloads_present` returns FAIL (not UNVERIFIED) when a named Svc.Version event is absent — strictly stronger; L6-1 rationale documents that `Exceedances advances by 0` is satisfied by silence. (S-6) L0-2 gains the two ordering metrics its evidence already claimed: NoOpStringReceived(id=20) precedes (id=42) precedes (id=21) — added metrics, nothing removed. (S-2/S-5) L2-4 rationale text corrected to lo=7, hi=11 and the 1 Hz explanation; decision 32(b) rewritten. (S-4) A8 and A14(b) are flagged for the human gate in the hand-off. (S-7) REQ-FprimeRust-015 observability is a UUT/design-lane note for the anchor, not a harness change.",
-    "34. Harness amendment A16 (stage 2 re-entry on reference campaign/dev e589b00b / fprime-rust cecc0c41, 2026-11-10, reviewer to confirm; supersedes decision 6 and amendment A4's marker choice): the DEVELOPMENT child added the harness tester FprimeRustReference.RustTester (instance rustTester, sync command MARK(id: U32) -> event rustTester.Marker `Marker {}`), so markers are command rustTester.MARK / event rustTester.Marker / arg id with event pattern `^Marker (?P<id>\\d+)$`; L0-2 counts and orders rustTester.Marker events. fth 0.1.2's run-start markers (0xFFFF0001 + manifest sha8, 0xFFFF0002 + seal sha8, 0xFFFF0003 + crc32(run id), fth/seal.py marker_ids) are U32 ids of a `*.Marker` event and are now recognised by `fth audit --tests` and `fth unseal`; the CMD_NO_OP_STRING marker and its NoOpStringReceived pattern are retired. bench/native_send.py keeps resolving short names and integer arguments (A4) for every command. The dispatcher-row completeness predicates of A5/A10 are re-derived from the first record on this image (A17b below): the record is the oracle.",
-    "35. Harness amendment A17 (stage 2 re-entry, 2026-11-10, reviewer to confirm; strengthening): RustCounter publishes `ThresholdValid: Fw.ParamValid` (channel 0x10016002, written with every Counter sample; REQ-RustCounter-007, D3). L2-2 and L5-1 gain the metric `last(rustCounter.ThresholdValid) == VALID` and cover REQ-RustCounter-007; packet RustReference lists rustCounter.ThresholdValid (same cadence as Counter, so the `RustReference samples >= 2` completeness holds unchanged). Nothing removed.",
-    "36. Harness amendment A18 (stage 2 re-entry, 2026-11-10, reviewer to confirm; anchor ruling T5): coverage.ut.scope and coverage.system.scope restated to exactly what fth judges — the UT fixture project's gcovr and the twin's `fth coverage-system` with the three filters, the third one EXCLUDING the FPP `*Ac.cpp` autocode (F Prime output, not the UUT's; the hand-written RustTester.cpp carries no counters). Thresholds unchanged: ut 95/85, system 75. The reviewer confirms the filter choice; the honest figure is reported whatever it is and a shortfall is a finding, never an added acknowledgement.",
-    "37. Harness amendment A17b (stage 2 re-entry, record 30a78bf5 on the rustTester image, 2026-11-10, reviewer to confirm): the per-window dispatcher-row predicates of A5/A10 (`event cmdDisp.OpCodeDispatched count == N-1`, textual opCode patterns) stay exact with the synchronous rustTester.MARK: Svc.CommandDispatcher logs OpCodeDispatched before the handler emits Marker, so the START marker's own dispatch row precedes the START event (outside the window) and the END marker's lies inside — deterministically N-1, verified on every test of record 30a78bf5 (11 PASS) and the nine development plants. The record is the oracle; nothing changed.",
-    "38. Harness amendment A20 (stage 2 re-entry, 2026-11-10, reviewer to confirm; harness-local): (a) `version_payloads_present` reads the payload as str(): the project describe of a tip whose short hash is all digits (record 8d51ebbe: `Project Version: [2890560]`) is normalised to int by fth's to_value and `.upper()` raised; the KAT gains the int payload case. (b) bench/native_recorder.py writes each read batch in FSW-stamp order (stable): fprime-cli prints rows in arrival order and two UUT threads inverted two rows by 6 us (record 8d51ebbe L147/L148), failing the record-integrity step; rows, names and payloads are unchanged, only the order within a batch.",
-    "39. Harness amendment A21 (stage 2 re-entry, 2026-11-10; PASS-RULE THRESHOLD CHANGE -> HUMAN GATE with A8/A14(b), reviewer to confirm the arithmetic only): L4-1 `delta(rustCounter.TickCount) in 55..65` / `delta(rustMonitor.RunCount) in 55..65` become `in 55..67`. Eight records on the rustTester image read 63, 64, 64, 64, 65, 65, 65 and 66 (re-dry-3, L5-1=bump_zero plant, L4-1 FAILED only on this bound), and re-dry-5 read 65 live but 66 on replay (the A14(b) pattern: the live view judged before the recorder flushed the last row; the record is the oracle): the window is START marker event .. END marker event around a 60 s wait plus two 1 Hz brackets (1-2 s each) and the marker latencies, i.e. 62-66 s, and the END event can land after one more tick — the same geometry A8/A14(b) established for L2-4 (7..11 around 5 s). 55..65 was centred on the bare 60 s wait. The lower bound is unchanged; a stalled or half-rate group (<= 30) and a doubled group (>= 120) are still rejected. The record is the oracle."
-  ],
-  "tests": [
-    {
-      "id": "L0-1",
-      "title": "Image identity",
-      "purpose": "Confirms the running executable reports non-empty project, framework and library version strings for the delivery manifest check.",
-      "covers": [],
-      "covers_note": "— (entry gate; image_version policy required: fth deliver/audit compare these payloads and the dictionary metadata with manifest repos[].describe)",
-      "setup": "Image installed by flash, GDS attached, ≥ 2 s after start.",
-      "procedure": [
-        "MARK(10)",
-        "bracket (2 samples)",
-        "CdhCore.version.VERSION(ALL)",
-        "bracket",
-        "MARK(11)"
-      ],
-      "windows": [
-        {
-          "name": "W",
-          "start_id": 10,
-          "end_id": 11,
-          "reset": false
-        }
-      ],
-      "metrics": [
-        "event version.ProjectVersion count == 1",
-        "event version.FrameworkVersion count == 1",
-        "event version.LibraryVersions count == 1",
-        "event cmdDisp.OpCodeError count == 0"
-      ],
-      "rationale": [
-        {
-          "pred": "event version.LibraryVersions count == 1",
-          "text": "one library (lib/fprime-rust) is registered in settings.ini library_locations, so Svc.Version emits one LibraryVersions event; fth v0.1.2 has no manifest-substituted predicate, so equality with manifest repos[].describe is the deliver/audit dictionary-describe check (fth audit.dictionary_describe_check), recorded here as the image_version policy"
-        },
-        {
-          "pred": "version payloads of ProjectVersion, FrameworkVersion, LibraryVersions are non-empty and not UNKNOWN",
-          "text": "stimulus-declared helper check `version_payloads_present(events=[\"version.ProjectVersion\", \"version.FrameworkVersion\", \"version.LibraryVersions\"])` (A7: fth 0.1.2 judges plan `metrics` by text alone, so a helper-bound check is declared by the test with check(text, helper) and bound through this plan's helpers module)"
-        }
-      ],
-      "knobs": [],
-      "evidence": "ProjectVersion, FrameworkVersion and LibraryVersions events with non-empty payloads; describe equality judged at deliver/unseal."
-    },
-    {
-      "id": "L0-2",
-      "title": "Marker round-trip",
-      "purpose": "Proves the harness tester's MARK command round-trips through the command path (rustTester.Marker) so every later window can be bracketed.",
-      "covers": [],
-      "covers_note": "— (entry gate; harness completeness)",
-      "setup": "As L0-1.",
-      "procedure": [
-        "MARK(20)",
-        "bracket (2 samples)",
-        "MARK(42)",
-        "bracket",
-        "MARK(21)"
-      ],
-      "windows": [
-        {
-          "name": "W",
-          "start_id": 20,
-          "end_id": 21,
-          "reset": false
-        }
-      ],
-      "metrics": [
-        "event rustTester.Marker count == 3",
-        "event rustTester.Marker(id=20) precedes event rustTester.Marker(id=42)",
-        "event rustTester.Marker(id=42) precedes event rustTester.Marker(id=21)",
-        "event cmdDisp.OpCodeError count == 0"
-      ],
-      "rationale": [],
-      "knobs": [],
-      "evidence": "Three rustTester.Marker events in order (20, 42, 21)."
-    },
-    {
-      "id": "L2-1",
-      "title": "Rust command, event and telemetry paths",
-      "purpose": "Resets and bumps the Rust active component to prove async commands dispatch into Rust and events and telemetry come back out.",
-      "covers": [
-        "REQ-FprimeRust-008",
-        "REQ-FprimeRust-012",
-        "REQ-FprimeRust-013",
-        "REQ-FprimeRust-014",
-        "REQ-RustCounter-001",
-        "REQ-RustCounter-002",
-        "REQ-RustCounter-004"
-      ],
-      "covers_note": "",
-      "setup": "L0-2 passed; THRESHOLD at default 100.",
-      "procedure": [
-        "MARK(30)",
-        "bracket (2 samples)",
-        "rustCounter.RESET()",
-        "rustCounter.BUMP(7)",
-        "rustCounter.BUMP(5)",
-        "bracket (2 samples)",
-        "MARK(31)"
-      ],
-      "windows": [
-        {
-          "name": "W",
-          "start_id": 30,
-          "end_id": 31,
-          "reset": false
-        }
-      ],
-      "metrics": [
-        "event rustCounter.ResetIssued count == 1",
-        "event rustCounter.Bumped(value=7) count == 1",
-        "event rustCounter.Bumped(value=12) count == 1",
-        "event rustCounter.ResetIssued precedes event rustCounter.Bumped(value=7)",
-        "last(rustCounter.Counter) == 12",
-        "event rustCounter.Saturated count == 0",
-        "event cmdDisp.OpCodeError count == 0"
-      ],
-      "rationale": [],
-      "knobs": [
-        "bump_wrong_amount",
-        "skip_reset"
-      ],
-      "evidence": "ResetIssued, Bumped(7), Bumped(12); Counter 12; no Saturated; no command error."
-    },
-    {
-      "id": "L2-2",
-      "title": "Parameter read from Rust",
-      "purpose": "Sets THRESHOLD to 5 and bumps past it to prove the Rust handler reads the parameter and saturates on it.",
-      "covers": [
-        "REQ-FprimeRust-015",
-        "REQ-RustCounter-003",
-        "REQ-RustCounter-006",
-        "REQ-RustCounter-007"
-      ],
-      "covers_note": "",
-      "setup": "L2-1 passed (opens with RESET, so L2-1's planted faults do not ripple here).",
-      "procedure": [
-        "MARK(40)",
-        "bracket (2 samples)",
-        "rustCounter.RESET()",
-        "rustCounter.THRESHOLD_PRM_SET(5)",
-        "rustCounter.BUMP(9)",
-        "rustCounter.THRESHOLD_PRM_SET(100)",
-        "bracket (2 samples)",
-        "MARK(41)"
-      ],
-      "windows": [
-        {
-          "name": "W",
-          "start_id": 40,
-          "end_id": 41,
-          "reset": false
-        }
-      ],
-      "metrics": [
-        "event rustCounter.Saturated(value=5, threshold=5) count == 1",
-        "last(rustCounter.Counter) == 5",
-        "event rustCounter.Bumped count == 0",
-        "last(rustCounter.ThresholdValid) == VALID",
-        "event cmdDisp.OpCodeError count == 0"
-      ],
-      "rationale": [
-        {
-          "pred": "event rustCounter.Saturated(value=5, threshold=5) count == 1",
-          "text": "THRESHOLD is read on every BUMP (RustCounter §Behavior), so the set value takes effect without a restart"
-        },
-        {
-          "pred": "last(rustCounter.ThresholdValid) == VALID",
-          "text": "REQ-RustCounter-007: RustCounter publishes the THRESHOLD validity it read (Fw.ParamValid) with every Counter sample; after THRESHOLD_PRM_SET the window's last sample must read VALID (A17)"
-        }
-      ],
-      "knobs": [
-        "threshold_not_set"
-      ],
-      "evidence": "Saturated(5, 5); Counter 5; no Bumped. ThresholdValid VALID after THRESHOLD_PRM_SET."
-    },
-    {
-      "id": "L2-3",
-      "title": "Rust to C++ to Rust port chain",
-      "purpose": "Bumps the Rust counter and follows the count through the C++ relay into the Rust monitor to prove typed ports in both directions.",
-      "covers": [
-        "REQ-FprimeRust-009",
-        "REQ-FprimeRust-010",
-        "REQ-FprimeRust-011",
-        "REQ-RustCounter-002",
-        "REQ-RustCounter-004",
-        "REQ-RustMonitor-003",
-        "REQ-Relay-001",
-        "REQ-Relay-002"
-      ],
-      "covers_note": "",
-      "setup": "L2-1 passed; rustMonitor limit at initial 4294967295.",
-      "procedure": [
-        "MARK(50)",
-        "bracket (2 samples)",
-        "rustCounter.RESET()",
-        "rustCounter.BUMP(3)",
-        "wait 2 s",
-        "bracket (2 samples)",
-        "MARK(51)"
-      ],
-      "windows": [
-        {
-          "name": "W",
-          "start_id": 50,
-          "end_id": 51,
-          "reset": false
-        }
-      ],
-      "metrics": [
-        "event rustCounter.Bumped(value=3) count == 1",
-        "last(rustMonitor.LastCount) == 3",
-        "event rustMonitor.LimitExceeded count == 0",
-        "event cmdDisp.OpCodeError count == 0"
-      ],
-      "rationale": [
-        {
-          "pred": "relay.Relayed advances by 2",
-          "text": "stimulus-declared helper check `counter_advances(channel=\"relay.Relayed\", by=2)` (A7: fth 0.1.2 judges plan `metrics` by text alone, so a helper-bound check is declared by the test with check(text, helper) and bound through this plan's helpers module); RESET and BUMP each send countOut once: Rust→C++ counted by the C++ relay, C++→Rust seen as LastCount after the next 1 Hz run"
-        }
-      ],
-      "knobs": [
-        "bump_wrong_amount"
-      ],
-      "evidence": "Bumped(3); Relayed +2; LastCount 3."
-    },
-    {
-      "id": "L2-4",
-      "title": "Rate-group ports into Rust",
-      "purpose": "Lets the 1 Hz rate group tick the active Rust component and run the queued Rust component to prove C++ scheduler ports into Rust handlers.",
-      "covers": [
-        "REQ-FprimeRust-008",
-        "REQ-FprimeRust-009",
-        "REQ-FprimeRust-011",
-        "REQ-FprimeRust-014",
-        "REQ-RustCounter-005",
-        "REQ-RustMonitor-005"
-      ],
-      "covers_note": "",
-      "setup": "L0-2 passed.",
-      "procedure": [
-        "MARK(60)",
-        "bracket (2 samples)",
-        "wait 5 s",
-        "bracket (2 samples)",
-        "MARK(61)"
-      ],
-      "windows": [
-        {
-          "name": "W",
-          "start_id": 60,
-          "end_id": 61,
-          "reset": false
-        }
-      ],
-      "metrics": [
-        "event cmdDisp.OpCodeError count == 0"
-      ],
-      "rationale": [
-        {
-          "pred": "delta(rustCounter.TickCount) in 7..11",
-          "text": "stimulus-declared helper check `delta_in_range(channel=\"rustCounter.TickCount\", lo=7, hi=11)` (A7: fth 0.1.2 judges plan `metrics` by text alone, so a helper-bound check is declared by the test with check(text, helper) and bound through this plan's helpers module); the rate group is 1 Hz (Main.cpp startRateGroups(Fw::TimeInterval(1, 0)), divider 1 in FprimeRustReferenceTopology.cpp; TickCount samples 1.000 s apart in every record); the window is START marker event .. END marker event and the stimulus between them is a bracket of two fresh samples (1-2 s), wait 5 s, a bracket of two fresh samples (1-2 s) plus the two marker command latencies, i.e. 7-9 s of stimulus, and the END marker event can land after one more 1 Hz tick, so the recorded advance is 7..11 (A8, A14(b): the record is the oracle); the lower bound 7 still rejects a stalled or half-rate group (<= 4) and the upper bound 11 a doubled one (>= 14)"
-        },
-        {
-          "pred": "delta(rustMonitor.RunCount) in 7..11",
-          "text": "stimulus-declared helper check `delta_in_range(channel=\"rustMonitor.RunCount\", lo=7, hi=11)` (A7, same binding); same 1 Hz rate group and window as TickCount, hence the same 7..11"
-        }
-      ],
-      "knobs": [],
-      "evidence": "TickCount and RunCount each advance 7..11 over the window."
-    },
-    {
-      "id": "L2-5",
-      "title": "Queued Rust command and limit exceedance",
-      "purpose": "Sets the monitor limit then bumps past it to prove a queued Rust component handles commands and raises a warning event from a relayed count.",
-      "covers": [
-        "REQ-FprimeRust-008",
-        "REQ-FprimeRust-012",
-        "REQ-FprimeRust-013",
-        "REQ-RustMonitor-001",
-        "REQ-RustMonitor-004",
-        "REQ-RustMonitor-006",
-        "REQ-RustMonitor-003"
-      ],
-      "covers_note": "",
-      "setup": "L2-3 passed.",
-      "procedure": [
-        "MARK(70)",
-        "bracket (2 samples)",
-        "rustMonitor.SET_LIMIT(4)",
-        "rustCounter.RESET()",
-        "rustCounter.BUMP(10)",
-        "wait 2 s",
-        "rustMonitor.SET_LIMIT(4294967295)",
-        "wait 2 s",
-        "bracket (2 samples)",
-        "MARK(71)"
-      ],
-      "windows": [
-        {
-          "name": "W",
-          "start_id": 70,
-          "end_id": 71,
-          "reset": false
-        }
-      ],
-      "metrics": [
-        "event rustMonitor.LimitSet(limit=4) count == 1",
-        "event rustMonitor.LimitExceeded(count=10, limit=4) count == 1",
-        "last(rustMonitor.LastCount) == 10",
-        "event rustMonitor.LimitSet count == 2",
-        "first(rustMonitor.Limit) == 4294967295",
-        "last(rustMonitor.Limit) == 4294967295",
-        "event cmdDisp.OpCodeError count == 0"
-      ],
-      "rationale": [
-        {
-          "pred": "first(rustMonitor.Limit) == 4294967295",
-          "text": "Limit is published every run, so the first sample in the window shows the initial limit before SET_LIMIT(4) is dispatched"
-        },
-        {
-          "pred": "event rustMonitor.LimitExceeded(count=10, limit=4) count == 1",
-          "text": "the count 10 reaches the queued component on the next 1 Hz run, within the 2 s wait"
-        },
-        {
-          "pred": "rustMonitor.Exceedances advances by 1",
-          "text": "stimulus-declared helper check `counter_advances(channel=\"rustMonitor.Exceedances\", by=1)` (A7: fth 0.1.2 judges plan `metrics` by text alone, so a helper-bound check is declared by the test with check(text, helper) and bound through this plan's helpers module)"
-        }
-      ],
-      "knobs": [
-        "limit_not_set"
-      ],
-      "evidence": "LimitSet(4), LimitExceeded(10, 4), Exceedances +1, limit restored."
-    },
-    {
-      "id": "L4-1",
-      "title": "Endurance 60 s",
-      "purpose": "Runs the deployment for 60 s to prove the Rust components keep servicing rate-group ports with no command errors or counter drift.",
-      "covers": [
-        "REQ-FprimeRust-014",
-        "REQ-RustCounter-005",
-        "REQ-RustMonitor-005"
-      ],
-      "covers_note": "",
-      "setup": "L2-4 passed.",
-      "procedure": [
-        "MARK(80)",
-        "bracket (2 samples)",
-        "wait 60 s",
-        "bracket (2 samples)",
-        "MARK(81)"
-      ],
-      "windows": [
-        {
-          "name": "W",
-          "start_id": 80,
-          "end_id": 81,
-          "reset": false
-        }
-      ],
-      "metrics": [
-        "delta(rustCounter.Counter) == 0",
-        "event rustCounter.Saturated count == 0",
-        "event cmdDisp.OpCodeError count == 0"
-      ],
-      "rationale": [
-        {
-          "pred": "delta(rustCounter.TickCount) in 55..67",
-          "text": "stimulus-declared helper check `delta_in_range(channel=\"rustCounter.TickCount\", lo=55, hi=67)` (A7: fth 0.1.2 judges plan `metrics` by text alone, so a helper-bound check is declared by the test with check(text, helper) and bound through this plan's helpers module); 1 Hz (Main.cpp, divider 1) over 60 s with scheduler jitter margin"
-        },
-        {
-          "pred": "delta(rustMonitor.RunCount) in 55..67",
-          "text": "stimulus-declared helper check `delta_in_range(channel=\"rustMonitor.RunCount\", lo=55, hi=67)` (A7: fth 0.1.2 judges plan `metrics` by text alone, so a helper-bound check is declared by the test with check(text, helper) and bound through this plan's helpers module)"
-        }
-      ],
-      "knobs": [],
-      "evidence": "55..67 ticks and runs; Counter unchanged."
-    },
-    {
-      "id": "L5-1",
-      "title": "Saturation fault path",
-      "purpose": "Drives the counter into THRESHOLD saturation to prove the Rust warning event and the clamp.",
-      "covers": [
-        "REQ-FprimeRust-013",
-        "REQ-FprimeRust-015",
-        "REQ-RustCounter-003",
-        "REQ-RustCounter-006",
-        "REQ-RustCounter-007"
-      ],
-      "covers_note": "",
-      "setup": "L2-2 passed.",
-      "procedure": [
-        "MARK(90)",
-        "bracket (2 samples)",
-        "rustCounter.RESET()",
-        "rustCounter.THRESHOLD_PRM_SET(3)",
-        "rustCounter.BUMP(2)",
-        "rustCounter.BUMP(2)",
-        "rustCounter.THRESHOLD_PRM_SET(100)",
-        "bracket (2 samples)",
-        "MARK(91)"
-      ],
-      "windows": [
-        {
-          "name": "W",
-          "start_id": 90,
-          "end_id": 91,
-          "reset": false
-        }
-      ],
-      "metrics": [
-        "event rustCounter.Bumped(value=2) count == 1",
-        "event rustCounter.Saturated(value=3, threshold=3) count == 1",
-        "last(rustCounter.Counter) == 3",
-        "event rustCounter.Bumped(value=2) precedes event rustCounter.Saturated(value=3, threshold=3)",
-        "last(rustCounter.ThresholdValid) == VALID",
-        "event cmdDisp.OpCodeError count == 0"
-      ],
-      "rationale": [
-        {
-          "pred": "last(rustCounter.ThresholdValid) == VALID",
-          "text": "REQ-RustCounter-007: RustCounter publishes the THRESHOLD validity it read (Fw.ParamValid) with every Counter sample; after THRESHOLD_PRM_SET the window's last sample must read VALID (A17)"
-        }
-      ],
-      "knobs": [
-        "bump_zero"
-      ],
-      "evidence": "Bumped(2) then Saturated(3, 3); Counter 3. ThresholdValid VALID after THRESHOLD_PRM_SET."
-    },
-    {
-      "id": "L6-1",
-      "title": "Negative control: SET_LIMIT(0) rejected",
-      "purpose": "Sends an invalid limit to prove the Rust handler rejects it with a validation error and changes nothing else.",
-      "covers": [
-        "REQ-FprimeRust-012",
-        "REQ-FprimeRust-013",
-        "REQ-RustMonitor-002",
-        "REQ-RustMonitor-006"
-      ],
-      "covers_note": "",
-      "setup": "L2-5 passed; limit at 4294967295.",
-      "procedure": [
-        "MARK(100)",
-        "bracket (2 samples)",
-        "rustMonitor.SET_LIMIT(0)",
-        "wait 2 s",
-        "bracket (2 samples)",
-        "MARK(101)"
-      ],
-      "windows": [
-        {
-          "name": "W",
-          "start_id": 100,
-          "end_id": 101,
-          "reset": false
-        }
-      ],
-      "metrics": [
-        "event rustMonitor.InvalidLimit(limit=0) count == 1",
-        "event cmdDisp.OpCodeError(error=VALIDATION_ERROR) count == 1",
-        "event rustMonitor.LimitSet count == 0",
-        "delta(rustMonitor.Limit) == 0",
-        "last(rustMonitor.Limit) == 4294967295",
-        "event rustCounter.Bumped count == 0"
-      ],
-      "rationale": [
-        {
-          "pred": "event cmdDisp.OpCodeError(error=VALIDATION_ERROR) count == 1",
-          "text": "negative control: the rejection is visible at the dispatcher and nothing else happened"
-        },
-        {
-          "pred": "rustMonitor.Exceedances advances by 0",
-          "text": "stimulus-declared helper check `counter_advances(channel=\"rustMonitor.Exceedances\", by=0)` (A7: fth 0.1.2 judges plan `metrics` by text alone, so a helper-bound check is declared by the test with check(text, helper) and bound through this plan's helpers module); a change-driven channel is sent only when written, so `advances by 0` is satisfied by silence (no Exceedances sample in the window) — backed by `event rustMonitor.LimitSet count == 0` and `delta(rustMonitor.Limit) == 0` (A15 / review S-3)"
-        }
-      ],
-      "knobs": [
-        "negative_wrong_limit"
-      ],
-      "evidence": "InvalidLimit(0), one OpCodeError(VALIDATION_ERROR), Limit and Exceedances unchanged."
-    },
-    {
-      "id": "L7-1",
-      "title": "Final state",
-      "purpose": "Saves THRESHOLD 42 into the parameter file, downlinks the file into the record and resets the counter to leave the deployment in an independently verifiable state.",
-      "covers": [
-        "REQ-FprimeRust-010",
-        "REQ-FprimeRust-011",
-        "REQ-RustCounter-001",
-        "REQ-RustCounter-004",
-        "REQ-Relay-001",
-        "REQ-Relay-002",
-        "REQ-RustMonitor-003"
-      ],
-      "covers_note": "final-state evidence (THRESHOLD persistence in PrmDb.dat) is owned by the autocoded parameter base + Svc.PrmDb, not traced to a component row (decision log 11)",
-      "setup": "All earlier tests run.",
-      "procedure": [
-        "MARK(110)",
-        "bracket (2 samples)",
-        "rustCounter.THRESHOLD_PRM_SET(42)",
-        "rustCounter.THRESHOLD_PRM_SAVE()",
-        "FileHandling.prmDb.PRM_SAVE_FILE()",
-        "wait 2 s",
-        "FileHandling.fileDownlink.SendFile(PrmDb.dat, PrmDb.dat)",
-        "wait 5 s",
-        "rustCounter.RESET()",
-        "bracket (2 samples)",
-        "MARK(111)",
-        "action: the recorder's GDS stores downlinked files under {logs}/files (bench gds --file-storage-directory), i.e. record/raw/files/fprime-downlink/PrmDb.dat; the prmdb_record_equals check parses it (CRC32, 0xA5 delimiter, U32 record size, FwPrmIdType id, value; Svc/PrmDb/docs/sdd.md §3.2)"
-      ],
-      "windows": [
-        {
-          "name": "W",
-          "start_id": 110,
-          "end_id": 111,
-          "reset": false
-        }
-      ],
-      "metrics": [
-        "event prmDb.PrmFileSaveComplete(records=1) count == 1",
-        "event fileDownlink.FileSent count == 1",
-        "event rustCounter.ResetIssued count == 1",
-        "last(rustCounter.Counter) == 0",
-        "event cmdDisp.OpCodeError count == 0"
-      ],
-      "rationale": [
-        {
-          "pred": "event prmDb.PrmFileSaveComplete(records=1) count == 1",
-          "text": "THRESHOLD is the only parameter in the deployment, so the saved file holds exactly one record"
-        },
-        {
-          "pred": "relay.Relayed advances by 1",
-          "text": "stimulus-declared helper check `counter_advances(channel=\"relay.Relayed\", by=1)` (A7: fth 0.1.2 judges plan `metrics` by text alone, so a helper-bound check is declared by the test with check(text, helper) and bound through this plan's helpers module); the reset count 0 travels Rust→C++→Rust one more time"
-        },
-        {
-          "pred": "PrmDb.dat record 0x10016000 == 42",
-          "text": "stimulus-declared helper check `prmdb_record_equals(path=\"files/fprime-downlink/PrmDb.dat\", id=268525568, value=42)` (A7: fth 0.1.2 judges plan `metrics` by text alone, so a helper-bound check is declared by the test with check(text, helper) and bound through this plan's helpers module)"
-        },
-        {
-          "pred": "last(rustMonitor.LastCount) == 0",
-          "text": "stimulus-declared check (A13): under skip_reset no count travels the port chain and LastCount has no sample in the window; fth 0.1.2 promotes a sample-less stimulus check to FAIL on a complete window but leaves a plan metric UNVERIFIED and out of `failed`, so the predicate is declared by the test to keep the planted fault's fails set byte-exact"
-        },
-        {
-          "pred": "event fileDownlink.FileOpenError count == 0",
-          "text": "stimulus-declared check (A14): Svc.FileDownlink queues SendFile and answers the command OK before opening the file; a missing PrmDb.dat surfaces as the asynchronous WARNING_HI FileOpenError (`Could not open file PrmDb.dat`), never as cmdDisp.OpCodeError. This is the predicate the threshold_not_saved fault fails together with the absent-file helper check."
-        }
-      ],
-      "knobs": [
-        "skip_reset",
-        "threshold_not_saved"
-      ],
-      "evidence": "PrmFileSaveComplete(1), FileSent, ResetIssued; Counter 0; LastCount 0; Relayed +1; record/raw/files/PrmDb.dat holds THRESHOLD (0x10016000) = 42."
-    }
+  "RustTesterBurst": [
+   "rustTester.BurstResponsesOk",
+   "rustTester.BurstResponsesError"
   ]
+ },
+ "std_complete": [
+  "both markers present",
+  "RustReference samples >= 2"
+ ],
+ "abs": {
+  "ABS": [
+   "event cmdDisp.MalformedCommand count == 0",
+   "event cmdDisp.InvalidCommand count == 0",
+   "event cmdDisp.TooManyCommands count == 0"
+  ]
+ },
+ "helpers_module": "planted_faults.py",
+ "requirements": {
+  "REQ-FprimeRust-001": {
+   "tests": [],
+   "verification": "Unit Test",
+   "note": "Unit Test",
+   "rationale": "E1/R1: the annotation is the only switch between a C++ and a Rust component, as `@ fprime-python` is"
+  },
+  "REQ-FprimeRust-002": {
+   "tests": [],
+   "verification": "Unit Test",
+   "note": "Unit Test",
+   "rationale": "E7/R5: no fpp-to-json, model from fprime-fpp-python as fprime-python's model.py does"
+  },
+  "REQ-FprimeRust-003": {
+   "tests": [],
+   "verification": "Unit Test",
+   "note": "Unit Test",
+   "rationale": "R1/R5: the closure fpp-depend already computed is the authoritative import set (fprime-python model.py)"
+  },
+  "REQ-FprimeRust-004": {
+   "tests": [],
+   "verification": "Unit Test",
+   "note": "Unit Test",
+   "rationale": "RS-2 fault: a bad model must stop the build loudly, not generate partial code"
+  },
+  "REQ-FprimeRust-005": {
+   "tests": [],
+   "verification": "Unit Test",
+   "note": "Unit Test",
+   "rationale": "E1/R1: fprime-python integrates through a generated C++ class over the autocoded base; same shape"
+  },
+  "REQ-FprimeRust-006": {
+   "tests": [],
+   "verification": "Unit Test",
+   "note": "Unit Test",
+   "rationale": "R1 / parent REQ-FprimeRust-026: the Rust surface carries the F Prime handler names, as the Python class does"
+  },
+  "REQ-FprimeRust-007": {
+   "tests": [],
+   "verification": "Unit Test",
+   "note": "Unit Test",
+   "rationale": "R1: same .template ergonomics as fprime-python (no fprime-util impl)"
+  },
+  "REQ-FprimeRust-008": {
+   "tests": [
+    "L2-1",
+    "L2-4",
+    "L2-5"
+   ],
+   "verification": "Unit Test; Integration Test: L2-1, L2-4, L2-5",
+   "note": "Unit Test; Integration Test",
+   "rationale": "R1/R4: fprime-python-reference ships active, queued and passive kinds"
+  },
+  "REQ-FprimeRust-009": {
+   "tests": [
+    "L2-3",
+    "L2-4"
+   ],
+   "verification": "Unit Test; Integration Test: L2-3, L2-4",
+   "note": "Unit Test; Integration Test",
+   "rationale": "R1: typed ports incl. Rust↔C++"
+  },
+  "REQ-FprimeRust-010": {
+   "tests": [
+    "L2-3",
+    "L7-1"
+   ],
+   "verification": "Unit Test; Integration Test: L2-3, L7-1",
+   "note": "Unit Test; Integration Test",
+   "rationale": "R1: fprime-python binds every output port"
+  },
+  "REQ-FprimeRust-011": {
+   "tests": [
+    "L2-3",
+    "L2-4",
+    "L7-1"
+   ],
+   "verification": "Integration Test: L2-3, L2-4, L7-1",
+   "note": "Integration Test",
+   "rationale": "R4: at least one connection each direction Rust→C++ and C++→Rust"
+  },
+  "REQ-FprimeRust-012": {
+   "tests": [
+    "L2-1",
+    "L2-5",
+    "L6-1"
+   ],
+   "verification": "Unit Test; Integration Test: L2-1, L2-5, L6-1",
+   "note": "Unit Test; Integration Test",
+   "rationale": "R1/R4: commands"
+  },
+  "REQ-FprimeRust-013": {
+   "tests": [
+    "L2-1",
+    "L2-5",
+    "L5-1",
+    "L6-1"
+   ],
+   "verification": "Unit Test; Integration Test: L2-1, L2-5, L5-1, L6-1",
+   "note": "Unit Test; Integration Test",
+   "rationale": "R1/R4: events"
+  },
+  "REQ-FprimeRust-014": {
+   "tests": [
+    "L2-1",
+    "L2-4",
+    "L4-1"
+   ],
+   "verification": "Unit Test; Integration Test: L2-1, L2-4, L4-1",
+   "note": "Unit Test; Integration Test",
+   "rationale": "R1/R4: telemetry"
+  },
+  "REQ-FprimeRust-015": {
+   "tests": [
+    "L2-2",
+    "L5-1"
+   ],
+   "verification": "Unit Test; Integration Test: L2-2, L5-1",
+   "note": "Unit Test; Integration Test",
+   "rationale": "R1/R4: parameters with validity, as paramGet returns in C++"
+  },
+  "REQ-FprimeRust-016": {
+   "tests": [],
+   "verification": "Unit Test",
+   "note": "Unit Test",
+   "rationale": "E1: the type set of the JPL-Devin MVP; R1: fprime-python exposes F Prime types to the implementation language"
+  },
+  "REQ-FprimeRust-017": {
+   "tests": [],
+   "verification": "Unit Test",
+   "note": "Unit Test",
+   "rationale": "RS-2 fault: fprime-python rejects unbindable elements by name at generation (README)"
+  },
+  "REQ-FprimeRust-018": {
+   "tests": [],
+   "verification": "Unit Test; Inspection",
+   "note": "Unit Test; Inspection",
+   "rationale": "E5/R4: one Rust runtime per deployment, no duplicate references"
+  },
+  "REQ-FprimeRust-020": {
+   "tests": [],
+   "verification": "Unit Test",
+   "note": "Unit Test",
+   "rationale": "R1: same cmake include position as include(FprimePython)"
+  },
+  "REQ-FprimeRust-021": {
+   "tests": [],
+   "verification": "Unit Test",
+   "note": "Unit Test",
+   "rationale": "R1: no .cpp/.hpp written by the user"
+  },
+  "REQ-FprimeRust-022": {
+   "tests": [],
+   "verification": "Unit Test",
+   "note": "Unit Test",
+   "rationale": "RS-2 fault: an imported FPP file changes after generation"
+  },
+  "REQ-FprimeRust-023": {
+   "tests": [],
+   "verification": "Unit Test",
+   "note": "Unit Test",
+   "rationale": "JPL DR-4.11.4.13 thread safety across the FFI; Rust aliasing model"
+  },
+  "REQ-FprimeRust-024": {
+   "tests": [],
+   "verification": "Unit Test",
+   "note": "Unit Test",
+   "rationale": "R1 parity: a Python exception ends the process; JPL DR-4.4.6.8 fault visibility through the assert hook"
+  },
+  "REQ-FprimeRust-025": {
+   "tests": [],
+   "verification": "Unit Test",
+   "note": "Unit Test",
+   "rationale": "RS-2 lifecycle: state must exist before the first handler and be released with the component"
+  },
+  "REQ-FprimeRust-026": {
+   "tests": [],
+   "verification": "Unit Test",
+   "note": "Unit Test",
+   "rationale": "R1: F Prime names so C++ and Rust implementers read the same handler"
+  },
+  "REQ-FprimeRust-027": {
+   "tests": [],
+   "verification": "Unit Test",
+   "note": "Unit Test",
+   "rationale": "R1: cookiecutter/template"
+  },
+  "REQ-FprimeRust-028": {
+   "tests": [],
+   "verification": "Unit Test",
+   "note": "Unit Test",
+   "rationale": "parent REQ-FprimeRust-022: a rerun on an unchanged closure must not change outputs or every build relinks"
+  },
+  "REQ-FprimeRust-030": {
+   "tests": [],
+   "verification": "Unit Test",
+   "note": "Unit Test",
+   "rationale": "R1: fprime-python binds parameterUpdated"
+  },
+  "REQ-FprimeRust-031": {
+   "tests": [],
+   "verification": "Unit Test",
+   "note": "Unit Test",
+   "rationale": "R1 ruling (anchor, round 1): internal ports are bound as in fprime-python"
+  },
+  "REQ-FprimeRust-032": {
+   "tests": [
+    "L6-2"
+   ],
+   "verification": "Unit Test; Integration Test: L6-2",
+   "note": "Unit Test; Integration Test (A22: L6-2 drives the RustMonitor SET_LIMIT overflow hook on the bench)",
+   "rationale": "R1 ruling (anchor, round 1): overflow hooks are bound as in fprime-python"
+  },
+  "REQ-FprimeRust-033": {
+   "tests": [],
+   "verification": "Unit Test",
+   "note": "Unit Test",
+   "rationale": "R1 ruling (anchor, round 1): port return values supported as in fprime-python"
+  },
+  "REQ-FprimeRust-034": {
+   "tests": [],
+   "verification": "Unit Test",
+   "note": "Unit Test",
+   "rationale": "RS-2 fault: fpp-cache/stdout.txt missing, empty or stale"
+  },
+  "REQ-FprimeRust-035": {
+   "tests": [],
+   "verification": "Unit Test",
+   "note": "Unit Test",
+   "rationale": "RS-2 fault: cargo absent on the build host"
+  },
+  "REQ-FprimeRust-036": {
+   "tests": [],
+   "verification": "Unit Test",
+   "note": "Unit Test",
+   "rationale": "RS-2 fault: user .rs does not compile"
+  },
+  "REQ-FprimeRust-037": {
+   "tests": [],
+   "verification": "Unit Test",
+   "note": "Unit Test",
+   "rationale": "R1 ruling (anchor, round 1): strings bounded by carrier capacity; F Prime StringBase truncation semantic chosen over rejection"
+  },
+  "REQ-FprimeRust-038": {
+   "tests": [],
+   "verification": "Unit Test",
+   "note": "Unit Test",
+   "rationale": "R1 ruling (anchor, round 1): F Prime strings are bytes, Rust &str is UTF-8; lossy conversion so no handler sees an error"
+  },
+  "REQ-FprimeRust-039": {
+   "tests": [],
+   "verification": "Unit Test",
+   "note": "Unit Test",
+   "rationale": "RS-2: a deployment including FprimeRust without Rust components (fprime-python skips unmarked deployments)"
+  },
+  "REQ-FprimeRust-040": {
+   "tests": [],
+   "verification": "Inspection",
+   "note": "Inspection",
+   "rationale": "R5: platform constraint stated and inspected"
+  },
+  "REQ-RustCounter-001": {
+   "tests": [
+    "L2-1",
+    "L7-1"
+   ],
+   "verification": "Unit Test; Integration Test: L2-1, L7-1",
+   "note": "Unit Test; Integration Test",
+   "rationale": "R4 commands + events (REQ-FprimeRust-012, -013)"
+  },
+  "REQ-RustCounter-002": {
+   "tests": [
+    "L2-1",
+    "L2-3"
+   ],
+   "verification": "Unit Test; Integration Test: L2-1, L2-3",
+   "note": "Unit Test; Integration Test",
+   "rationale": "R4 commands + events (REQ-FprimeRust-012, -013)"
+  },
+  "REQ-RustCounter-003": {
+   "tests": [
+    "L2-2",
+    "L5-1"
+   ],
+   "verification": "Unit Test; Integration Test: L2-2, L5-1",
+   "note": "Unit Test; Integration Test",
+   "rationale": "R4 parameters (REQ-FprimeRust-015); JPL DR-4.4.7.1 no wrap on a ground-settable U32"
+  },
+  "REQ-RustCounter-004": {
+   "tests": [
+    "L2-1",
+    "L2-3",
+    "L7-1"
+   ],
+   "verification": "Unit Test; Integration Test: L2-1, L2-3, L7-1",
+   "note": "Unit Test; Integration Test",
+   "rationale": "R4 Rust→C++ port (REQ-FprimeRust-010, -011) + telemetry (-014)"
+  },
+  "REQ-RustCounter-005": {
+   "tests": [
+    "L2-4",
+    "L4-1"
+   ],
+   "verification": "Unit Test; Integration Test: L2-4, L4-1",
+   "note": "Unit Test; Integration Test",
+   "rationale": "C++→Rust port (REQ-FprimeRust-009); JPL DR-4.4.6.4 state visible at pass start"
+  },
+  "REQ-RustCounter-006": {
+   "tests": [
+    "L2-2",
+    "L5-1"
+   ],
+   "verification": "Unit Test; Integration Test: L2-2, L5-1",
+   "note": "Unit Test; Integration Test",
+   "rationale": "R4 parameters: update takes effect (REQ-FprimeRust-015)"
+  },
+  "REQ-RustMonitor-001": {
+   "tests": [
+    "L2-5",
+    "L6-2"
+   ],
+   "verification": "Unit Test; Integration Test: L2-5, L6-2",
+   "note": "Unit Test; Integration Test",
+   "rationale": "R4 commands (REQ-FprimeRust-012), events of two severities (-013)",
+   "waiver": "single covering test (L2-5): one accepted SET_LIMIT per run; redundancy by UT-RM-1"
+  },
+  "REQ-RustMonitor-002": {
+   "tests": [
+    "L6-1"
+   ],
+   "verification": "Unit Test; Integration Test: L6-1",
+   "note": "Unit Test; Integration Test",
+   "rationale": "R4 command rejection path (REQ-FprimeRust-012); L6 negative control",
+   "waiver": "single covering test (L6-1): the negative control is run once; redundancy by UT-RM-2"
+  },
+  "REQ-RustMonitor-003": {
+   "tests": [
+    "L2-3",
+    "L2-5",
+    "L7-1"
+   ],
+   "verification": "Unit Test; Integration Test: L2-3, L2-5, L7-1",
+   "note": "Unit Test; Integration Test",
+   "rationale": "C++→Rust async port (REQ-FprimeRust-009, -011), telemetry (-014)"
+  },
+  "REQ-RustMonitor-004": {
+   "tests": [
+    "L2-5"
+   ],
+   "verification": "Unit Test; Integration Test: L2-5",
+   "note": "Unit Test; Integration Test",
+   "rationale": "events + telemetry (REQ-FprimeRust-013, -014)",
+   "waiver": "single covering test (L2-5): one exceedance per run; redundancy by UT-RM-3"
+  },
+  "REQ-RustMonitor-005": {
+   "tests": [
+    "L2-4",
+    "L4-1"
+   ],
+   "verification": "Unit Test; Integration Test: L2-4, L4-1",
+   "note": "Unit Test; Integration Test",
+   "rationale": "queued kind with Rust-driven dispatch (REQ-FprimeRust-008), sync port (-009)"
+  },
+  "REQ-RustMonitor-006": {
+   "tests": [
+    "L2-5",
+    "L6-1"
+   ],
+   "verification": "Unit Test; Integration Test: L2-5, L6-1",
+   "note": "Unit Test; Integration Test",
+   "rationale": "JPL DR-4.11.2.1 defined initial state; constants row"
+  },
+  "REQ-Relay-001": {
+   "tests": [
+    "L2-3",
+    "L7-1"
+   ],
+   "verification": "Unit Test; Integration Test: L2-3, L7-1",
+   "note": "Unit Test; Integration Test",
+   "rationale": "R4 Rust↔C++ ports both directions (REQ-FprimeRust-011)"
+  },
+  "REQ-Relay-002": {
+   "tests": [
+    "L2-3",
+    "L7-1"
+   ],
+   "verification": "Unit Test; Integration Test: L2-3, L7-1",
+   "note": "Unit Test; Integration Test",
+   "rationale": "observable for L2-3/L7-1 (REQ-FprimeRust-010)"
+  },
+  "REQ-RustMonitor-007": {
+   "tests": [
+    "L6-2"
+   ],
+   "verification": "Unit Test; Integration Test: L6-2",
+   "note": "Unit Test; Integration Test (A22: L6-2)",
+   "rationale": "DEVELOPMENT ruling 11: SET_LIMIT is an async hook command; a full queue answers BUSY instead of asserting"
+  },
+  "REQ-RustCounter-007": {
+   "tests": [
+    "L2-2",
+    "L5-1"
+   ],
+   "verification": "Integration Test",
+   "note": "L2-2/L5-1 read last(rustCounter.ThresholdValid) == VALID after THRESHOLD_PRM_SET (A17); UT-RC-6 covers DEFAULT before any set",
+   "rationale": "E1/R1: the annotation is the only switch between a C++ and a Rust component, as `@ fprime-python` is",
+   "text": "RustCounter shall publish `ThresholdValid`, the validity of THRESHOLD as read by its handler, with every `Counter` sample (RESET, BUMP and tick)."
+  }
+ },
+ "coverage": {
+  "ut": {
+   "lines_min": 95,
+   "branches_min": 85,
+   "scope": "what fth judges (T5): gcov/gcovr of the UUT's default-config fixture UT project lib/fprime-rust/tests/project via `fprime-util generate --ut && fprime-util check --all --coverage` (C++ fixtures ActiveFix/PassiveFix/QueuedFix exercising the generated shim and runtime glue, plus the F Prime config headers that project compiles). The Rust crates themselves are not gcov-instrumentable; cargo llvm-cov figures are reported informatively in dev-evidence, never judged against this threshold"
+  },
+  "system": {
+   "lines_min": 75,
+   "scope": "what fth judges (T5): the instrumented twin of FprimeRustReference (CMake option FPRIME_RUST_REFERENCE_COVERAGE=ON, GCC >= 12, separate build cache build-fprime-automatic-native-cov) runs the same plan on the native bench; counters are paged out by rustTester.DUMP_COVERAGE (gcov-dump plan) and measured by `fth coverage-system` with --filter `FprimeRustReference/Components/(?!RustTester/)` (hand-written Relay.cpp; the harness tester RustTester.cpp is excluded, S-10), --filter lib/fprime-rust/FprimeRust/ (glue) and the twin-cache filter for the generated Rust shim RustCounter.cpp/RustMonitor.cpp with the FPP autocode *Ac.cpp excluded (regex build-fprime-automatic-native-cov/FprimeRustReference/Components/.*/(?!.*Ac\\.cpp$)[^/]*\\.cpp$) — FPP autocode is F Prime's, not the UUT's output. The pure RfR image is the OFF build; the Rust handler bodies are outside gcov's reach [I]"
+  },
+  "not_covered_ack": [
+   "L3 reset/persistence across a process restart: the native bench defines no reset row (R7 names flash, dump, gds only); THRESHOLD persistence is proven by the saved file (L7-1), not by a reload",
+   "REQ-FprimeRust-024 panic-abort path: death test in UT only; never planted in the system run (it would end the record)",
+   "REQ-FprimeRust-017/-034/-035/-036 generation and build failure paths: autocoder/build UT only; the reference deployment models only supported elements",
+   "REQ-FprimeRust-030/-031/-033 (parameterUpdated, internal ports, port return values; -032 overflow hooks moved to L6-2 by A22) and passive Rust components, guarded ports, sync/guarded commands, ACTIVITY_HI/COMMAND/DIAGNOSTIC/FATAL severities: shim UT only; the reference deployment exercises active + queued, async/sync members and three severities"
+  ],
+  "rationale": "UT baseline 95/85 from fprime-system-test-design; system 75 because the deployment's Svc/Drv framework code shares the executable and only the Rust integration surface is judged"
+ },
+ "image_version": {
+  "policy": "required",
+  "reason": "CdhCore.Subtopology instantiates Svc.Version; L0-1 compares ProjectVersion/LibraryVersions with the manifest describe strings"
+ },
+ "final_state": {
+  "accepted_evidence": "L7-1: record/raw/files/fprime-downlink/PrmDb.dat (downlinked by FileHandling.fileDownlink.SendFile into the GDS --file-storage-directory {logs}/files) parsed by prmdb_record_equals: record 0x10016000 == 42; plus PrmFileSaveComplete(records=1) and FileSent in the window",
+  "rationale": "Anchor ruling E-1 (round 1): the final state is a UUT state file. fth v0.1.2 run.flash() hashes the bench `dump` read-back against the manifest image at flash time (run.py: 'read-back differs from image'), so `dump` must read the installed executable; the parameter file therefore leaves the UUT by file downlink inside the L7-1 window and the prmdb_record_equals helper check parses record/raw/files/fprime-downlink/PrmDb.dat (Svc/PrmDb/docs/sdd.md §3.2 record format) for THRESHOLD == 42 independently of the UUT's events and telemetry (an absent file on a complete window is FAIL — no file was downlinked; FAIL on a CRC32, delimiter, missing-id or value mismatch); the planted fault threshold_not_saved disturbs exactly this artifact."
+ },
+ "max_planted_faults": 2,
+ "levels": {
+  "L0": "provenance (image identity, markers)",
+  "L2": "functional (commands, events, telemetry, parameters, ports both directions, queued kind, rate groups)",
+  "L4": "endurance 60 s",
+  "L5": "fault path (saturation)",
+  "L6": "negative control (rejected command)",
+  "L7": "final state (PrmDb.dat saved + downlinked; executable read-back at flash)"
+ },
+ "not_covered": [
+  "L3 reset/persistence (no reset row on the native bench)"
+ ],
+ "decision_log": [
+  "1. Captain R1 (2026-11-09): Approve-SDD waived; design matches fprime-python (annotation, cmake shape, autocoder closure from fpp-cache/stdout.txt, .fpp+.rs ergonomics, cookiecutter, test/int).",
+  "2. Captain R4 (2026-11-09): ≥2 Rust components (RustCounter active, RustMonitor queued) + C++ Relay for Rust→C++ and C++→Rust ports; ONE Rust runtime per deployment via a deployment-level Cargo workspace (member rlibs, one staticlib root). Alternatives rejected in fprime-rust docs/sdd.md §Design.",
+  "3. Captain R5 (2026-11-09): no fpp-to-json / FPRIME_ENABLE_JSON_MODEL_GENERATION; fprime-fpp-python==4.0.1 + fprime-cpp-codegen==0.2.0; wheel platform constraint stated in the SDD. Spike on the campaign host: import + fpp.analyze clean with the fpp-depend closure.",
+  "4. Captain R7 (2026-11-09): native Linux x86_64 bench, fprime-gds, no hardware; bench.json flash/dump/gds/recorder/send as recorded; native executable (no suffix) is the manifest image; image_version required.",
+  "5. Captain (2026-11-09): pin lib/fprime to nasa/fprime devel b188d185ec46699b5fdc0a0666537896a5ea9d47 and lib/fprime-rust to lestarch-autobot/fprime-rust main; submodule edit is DEVELOPMENT work.",
+  "6. Author (2026-11-10): markers use CdhCore.cmdDisp.CMD_NO_OP_STRING / NoOpStringReceived so bracketing does not depend on the UUT's own command path; no helper component.",
+  "7. Author (2026-11-10): L3 not covered — the native bench has no reset row; acknowledged in coverage.not_covered_ack. Recommended ruling: accept, or add a reset row (kill + relaunch via gds) in DEVELOPMENT if persistence proof is wanted.",
+  "8. Author (2026-11-10, revised round 1): REQ-FprimeRust-018 (one Rust runtime per executable) is verified by Inspection of the build (UT-BUILD-1: exactly one libfprime_rust_<Deployment>.a on the link line, `nm` shows one definition of rust_begin_unwind, no duplicate-symbol diagnostics); L0-1 is an entry gate.",
+  "9. Author (2026-11-10, revised round 1): max planted faults per run = 2; menu holds 7 faults ≥ 2×2; every system-covered requirement has ≥2 covering tests with disjoint planted-fault sets or a waiver note; ripples stated per fault (every functional test opens with RESET or an explicit SET_LIMIT, which insulates it from the previous test's residue).",
+  "10. Author (round 1, revised round 2): component SDD requirement tables kept (anchor E-2); every REQ-RustCounter/RustMonitor/Relay id traced here with rationale. fth v0.1.2 `verify-plan --sdd` takes one baseline file, so the gate runs against the mechanical concatenation of the four committed SDDs, in this order and with this command from the reference root, with the precondition that `lib/fprime-rust` is checked out at the fprime-rust `campaign/design` DESIGN head (the committed submodule pin still points at JPL-Devin until the DEVELOPMENT repoint, decision 14): `cat lib/fprime-rust/docs/sdd.md FprimeRustReference/Components/RustCounter/docs/sdd.md FprimeRustReference/Components/RustMonitor/docs/sdd.md FprimeRustReference/Components/Relay/docs/sdd.md > /tmp/sdd-concat.md && fth verify-plan FprimeRustReference/ReferenceDeployment/test/int/plan.json --sdd /tmp/sdd-concat.md`; expected last line: `requirements ok: 52 plan requirement ids all in the SDD table (52 rows) of /tmp/sdd-concat.md`.",
+  "11. Author (round 1, revised round 2): unconnected output port invoked from Rust is owned by the autocoded component base (FW_ASSERT in X_out, F Prime user manual, ports); Rust sees the same abort as C++ (REQ-FprimeRust-024); Relay guards countOut with isConnected_countOut_OutputPort(). Rust allocation failure: aborts via std (no F Prime hook; stable Rust has no alloc_error_handler — amended by DEVELOPMENT ruling 4). THRESHOLD persistence in PrmDb.dat is owned by the autocoded parameter base (THRESHOLD_PRM_SAVE -> prmSetOut) and Svc.PrmDb (PRM_SAVE_FILE, Svc/PrmDb/docs/sdd.md); L7-1 parses the downlinked file as final-state evidence (covers_note), not as a RustCounter requirement.",
+  "12. Author (round 1): `@ fprime-rust` on a non-component element is ignored (UT-AC-1). THRESHOLD invalid/absent in prmDb: FPP default 100 applies (framework parameter semantics). RustMonitor queue full: countIn drops (FPP `drop`), SET_LIMIT asserts (F Prime default; amended by decision 17: hook → BUSY); Relay countOut unconnected: count dropped, Relayed still counts.",
+  "13. Author (round 1): bench `dump` reads the installed executable because fth v0.1.2 flash() requires read-back sha256 == image sha256; final state is the in-band PrmDb.dat save + file downlink (see final_state). NEW elicitation finding for the anchor.",
+  "14. Author (round 1): lib/fprime-rust submodule URL changes from https://github.com/JPL-Devin/fprime-rust.git (branch devin/1778113254-initial-import) to https://github.com/lestarch-autobot/fprime-rust.git branch main, and lib/fprime is pinned to nasa/fprime b188d185ec46699b5fdc0a0666537896a5ea9d47 — both DEVELOPMENT edits. bench/native_flash.py and bench/native_dump.py are design items DEVELOPMENT creates and the package pins.",
+  "15. Author (round 1): L0-1 judges that version events are present with non-empty payloads; equality with manifest repos[].describe is the fth deliver/audit dictionary-describe check (fth v0.1.2 engine has no manifest-substituted predicate), declared by image_version policy required.",
+  "16. Author (round 1): the fpp-check gate ran on the full closure (reference FPP + nasa/fprime b188d185 Fw/Svc/Drv/Os/Utils/CFDP/default/Fpp/cmake + unix PlatformTypes.fpp, fpp-check v4.0.0a1 = the pin's requirements.txt) — clean; topology uses `deployment topology` (accepted by fpp 4.0.0a1).",
+  "17. Author (round 2): RustMonitor.SET_LIMIT keeps the F Prime default `assert` on queue full (every async command in the deployment, CdhCore included, shares it); operational bound: fewer than 10 SET_LIMITs plus counts queued within one 1 Hz run (queue depth Default.QUEUE_SIZE = 10); countIn is `drop` without trace (a missed comparison is accepted for the reference; a flight monitor would use `hook` with a dropped-count channel). Planted-fault classes: threshold_not_set, bump_zero, limit_not_set are stimulus faults (command rewrites reset within the test); threshold_not_saved is the uut-state fault. — amended DEVELOPMENT: SET_LIMIT hook → BUSY, reproduced assert at RustMonitorComponentAc.cpp:845 (11 SET_LIMITs in one 1 Hz period aborted the deployment); SET_LIMIT is now `async … hook` and its Rust overflow hook responds BUSY (anchor ruling 11). Bench (DEVELOPMENT iteration 2): a full RustMonitor drain answers up to 10 commands in one burst and overflowed CdhCore.cmdDisp's 10-deep compCmdStat queue (CommandDispatcherComponentAc.cpp:1132 assert); the reference overrides CdhCoreConfig.QueueSizes.cmdDisp = 20 (ReferenceDeployment/CdhCoreConfig/). 12 commands within ~4 ms still overflow the dispatcher's own command queue (framework default), independent of RustMonitor.",
+  "18. Author (round 2): queued dispatch shape — the generated sync/guarded entry of a queued Rust component drains the base queue (dispatchAvailableMessages()) under the one instance lock before constructing &mut Implementation; async entries of queued components take no lock; so no two &mut Implementation are live (fprime-rust SDD §Behavior; UT-SHIM-6, UT-RT-4 Miri).",
+  "19. Harness amendment A1 (stage 2, bench-verified 2026-11-10, reviewer to confirm): event names use fth v0.1.2's short form (last two dotted parts, fth.replay.short_name; the engine matches e.short == name): CdhCore.cmdDisp.* -> cmdDisp.*, CdhCore.version.* -> version.*, FileHandling.prmDb.* -> prmDb.*, FileHandling.fileDownlink.* -> fileDownlink.* in markers.event, event_patterns, std_complete, abs, metrics and planted-fault fails. Pass rules unchanged; the record names stay the dictionary's (CdhCore.cmdDisp.NoOpStringReceived). Commands are sent by full dictionary name (fprime-cli refuses suffixes: 'cmdDisp.CMD_NO_OP_STRING is not a known command'), so bench.json deployment is empty and markers.command stays CdhCore.cmdDisp.CMD_NO_OP_STRING.",
+  "20. Harness amendment A2 (stage 2, bench-verified 2026-11-10, reviewer to confirm): fprime-gds 4.4.0 stores downlinked files under --file-storage-directory/fprime-downlink/, so the final-state artifact is record/raw/files/fprime-downlink/PrmDb.dat (helper arg path; check text 'PrmDb.dat record 0x10016000 == 42' unchanged). bench.json dictionary path corrected to the built tree's build-artifacts/Linux/FprimeRustReference_ReferenceDeployment/dict/.",
+  "21. Harness amendment A3 (stage 2, bench-verified 2026-11-10, reviewer to confirm): the first bench record exported 0 events/0 channels (161/161 event rows, 3957/3957 channel rows unparsed) because fth 0.1.2's exporter reads only TB_PROC_TIME rows while the deployment's Svc.PosixTime stamps TB_WORKSTATION_TIME (fprime-gds prints an ISO date). The fth pin and the deployment are frozen, so the bench recorder is bench/native_recorder.py: fprime-cli events runs unchanged (its output is kept verbatim under record/raw/recorder-native/) and every row is re-rendered from its own (tb(ctx)-sec:usec) stamp into the TB_PROC_TIME row form — same rows, same order, same names, ids and payloads; the fsw clock fth orders by is the row's wall-clock seconds. No pass rule, threshold or fails set changes. Design-stage note for the anchor: the fth time-base assumption vs PosixTime was not caught at design.",
+  "22. Harness amendment A4 (stage 2, bench-verified 2026-11-10, reviewer to confirm): with A3 in place every window read UNVERIFIED on the STD predicate `commands_sent == count(event cmdDisp.OpCodeDispatched)` with commands_sent=0: fth 0.1.2 slices a window's commands by comparing the marker command row's first logged argument with the marker id as an integer, and fprime-gds logs the CMD_NO_OP_STRING argument as a string (['20']). The dictionary has no inert command with one integer argument (BUMP, THRESHOLD_PRM_SET and SET_LIMIT all mutate state), so the marker stays CMD_NO_OP_STRING and the bench sender is bench/native_send.py: fprime-cli command-send runs unchanged (its log kept verbatim under record/raw/cmd/send-native/) and the command row is logged with the arguments as given on the command line, decimal integers as integers ([20]); names, opcodes, stamps and every other argument are unchanged. No pass rule, threshold or fails set changes. Recommendation for the anchor: fth should compare marker arguments as text (replay._is_marker_cmd), which would retire A4. Same amendment: `markers.command` is the fth short form cmdDisp.CMD_NO_OP_STRING (fth compares it with the command row's short name — the full name never matched, commands_sent=0 on every window); the sender resolves the short name fth sends to the one dictionary command ending in it, so the marker still goes out as CdhCore.cmdDisp.CMD_NO_OP_STRING.",
+  "23. Harness amendment A5 (stage 2, bench-verified 2026-11-10, reviewer to confirm): with A3/A4 in place every window read UNVERIFIED on the plan-wide STD predicate `commands_sent == count(event cmdDisp.OpCodeDispatched)` with count = commands_sent - 1 (record 329bab5d: L0-1 3 vs 2, L2-1 5 vs 4). fth counts OpCodeDispatched rows between the two marker events; on this UUT Svc.CommandDispatcher logs OpCodeDispatched before it queues CMD_NO_OP_STRING to itself, so the START marker's own dispatch row (40 us earlier than NoOpStringReceived) is outside the window and the END marker's is inside — deterministically commands_sent - 1. The predicate is replaced by two per-window predicates with the exact numbers, declared in every window: require `commands_sent == N` (sender log: N = stimulus commands + both markers) and check `event cmdDisp.OpCodeDispatched count == N-1` (the UUT dispatched every command but the START marker, whose row precedes the window). N is fixed per window (planted faults substitute commands one for one, never add or drop), so the checks are at least as strong as the plan-wide predicate; `both markers present` and `RustReference samples >= 2` stay in std_complete. No pass rule, threshold or fails set weakens.",
+  "24. Harness amendment A6 (stage 2, bench-verified 2026-11-10, reviewer to confirm): with A5 in place every window read UNVERIFIED on `RustReference samples >= 2` with `RustReference samples=0` (record ff0bcbe8). fth takes the minimum sample count over the packet's channels; Svc.TlmChan downlinks only channels written since its last cycle, and rustMonitor.LastCount, rustMonitor.Exceedances and relay.Relayed are written only when a count arrives or the limit trips (record ff0bcbe8: 13, 1 and 13 samples in 180 s against 190 of each 1 Hz channel), so a window without a BUMP (L0-1, L0-2, L2-4, L4-1, L6-1) can never show two of them. The packet `RustReference` is reduced to the four channels the rate group writes every cycle — rustCounter.Counter, rustCounter.TickCount, rustMonitor.RunCount, rustMonitor.Limit — which is what `samples >= 2` was there to establish (the window brackets at least two telemetry cycles); the event-driven channels keep being judged by the per-test `last(...)`/`delta(...)` checks that name them. No pass rule, threshold or fails set weakens.",
+  "25. Harness amendment A7 (stage 2, bench-verified 2026-11-10, reviewer to confirm), record df7d421e, two findings. (a) fth 0.1.2 judges a test's plan `metrics` by text alone at window close (fth/checks.py judge(): PredSpec(name) without the helper binding), so every helper-bound metric raised `PlanError: unparsable predicate` (L0-1, L2-4, L4-1, L7-1 FAIL); moving them to `all_of` is refused too (a test-owned plan must not mix in plan-owned checks: it would lose the stimulus pin and the replay auditor). Helper-bound checks therefore leave the plan's `metrics` lists and are declared by the stimulus with check(text, helper) — same text, helper and args, bound through this plan's helpers module (planted_faults.py), judged at window close and by the auditor's replay of the tests, verbatim in the planted-fault `fails` sets (verify-plan --tests) — and each is documented in the test's `rationale` as a stimulus-declared helper check: L0-1 `version payloads of ProjectVersion, FrameworkVersion, LibraryVersions are non-empty and not UNKNOWN`; L2-3 `relay.Relayed advances by 2`; L2-4 `delta(rustCounter.TickCount) in 4..8`; L2-4 `delta(rustMonitor.RunCount) in 4..8`; L2-5 `rustMonitor.Exceedances advances by 1`; L4-1 `delta(rustCounter.TickCount) in 55..65`; L4-1 `delta(rustMonitor.RunCount) in 55..65`; L6-1 `rustMonitor.Exceedances advances by 0`; L7-1 `PrmDb.dat record 0x10016000 == 42`; L7-1 `relay.Relayed advances by 1`. (b) `delta(ch) == n` is last-minus-first inside the window and relay.Relayed / rustMonitor.Exceedances are change-driven (written only when they move; TlmChan sends only written channels), so the window's first sample already carries the first step: L2-3 `delta(relay.Relayed) == 2` read delta=1 (first=6 last=7: the RESET's relay is the first sample), L2-5 `delta(rustMonitor.Exceedances) == 1` had 1 sample, L6-1 `delta(rustMonitor.Exceedances) == 0` had 0 samples (both UNVERIFIED-class → FAIL on a complete window). These four predicates (also L7-1 `delta(relay.Relayed) == 1`) become the helper `counter_advances(channel, by)` — `relay.Relayed advances by 2` etc.: last sample in the window minus the last sample before the START marker anywhere in the record (boot value 0 when never sent: Relay::m_relayed(0), RustMonitor exceedances: 0); no sample in a complete window is the proof of no write (advance 0). This judges the very increment the rationale describes (RESET and BUMP relay once each) and is not weaker than delta: it still requires the exact advance and a baseline. Planted-fault `fails` sets rename the four predicates verbatim (negative_wrong_limit/limit_not_set/skip_reset keep the same number of fails). No pass rule, threshold or fails set weakens.",
+  "26. Harness amendment A8 (stage 2, bench-verified 2026-11-10, reviewer to confirm): L2-4 `delta(rustCounter.TickCount) in 4..8` and `delta(rustMonitor.RunCount) in 4..8` read delta=9 (record 9ecae84d, C1310->C1476 and C1307->C1474) on a window that follows the plan's own procedure — bracket (2 samples), wait 5 s, bracket (2 samples): each bracket adds 1-2 s of 1 Hz samples to the 5 s wait, so the window spans 7-9 s and a 1 Hz rate group must advance 7..9, 10 with one sample of phase jitter. The 4..8 bound was an arithmetic slip against that procedure (the L4-1 analogue 55..65 for a 60 s wait is consistent). Corrected to 7..10 for both: a 4-wide band around the actual window instead of a 5-wide band below it — it rejects a stalled or doubled rate group exactly as the original intended, and is not weaker. Check names change verbatim in the stimulus and rationale; L2-4 has no planted fault.",
+  "27. Harness amendment A9 (stage 2, bench-verified 2026-11-10, reviewer to confirm): L7-1 `PrmDb.dat record 0x10016000 == 42` read `CRC32 mismatch: stored 0x4ceb3a87, computed 0xb314c578` on record 9e5eaa07 whose downlinked record/raw/files/fprime-downlink/PrmDb.dat (17 bytes: 4ceb3a87 a5 00000008 10016000 0000002a) is well-formed. Svc.PrmDb (lib/fprime b188d18, Svc/PrmDb/PrmDbImpl.cpp PrmFileSave) writes `~crc.finalize()` of the record bytes with Utils::Hash = Crc32 (init 0xFFFFFFFF): the CRC-32 of the records WITHOUT the final inversion, i.e. zlib.crc32(records) ^ 0xFFFFFFFF = 0x4ceb3a87 exactly. The helper prmdb_record_equals computes that value (the oracle's algorithm corrected to the UUT's documented one; the check still rejects any altered byte of the file, the record format and the value 42 are unchanged). Also fixed in the same helper: the live plugin judges a temporary export of record/raw, so the file is resolved from the pytest argv fth records (--fth-run-dir / --fth-replay-record) with record.path/raw as the first candidate (record 9ecae84d read `absent from record/raw` with the file present). No pass rule, threshold or fails set weakens.",
+  "28. Harness amendment A10 (stage 2, bench-verified 2026-11-10, reviewer to confirm): on the first all-PASS record e8a385cf, `fth audit --tests` read DIVERGENCE on 10 of 11 tests (runner PASS, replay FAIL `event cmdDisp.OpCodeDispatched count == N-1` with count N; L2-4/L4-1 tick deltas 12 instead of 9/10). Cause: fth 0.1.2's window slicer scans up to 8 event rows past the END marker for the marker command's own dispatcher rows (OpCodeCompleted/OpCodeDispatched, stopping at the first OpCodeDispatched), built for a synchronous marker component (fth's framTester: Marker, then OpCodeCompleted, then OpCodeDispatched). This UUT's only marker-capable command is Svc.CommandDispatcher's own CMD_NO_OP_STRING, dispatched to itself asynchronously, so the order is OpCodeDispatched, NoOpStringReceived, OpCodeCompleted: the END marker's Dispatched row already precedes its event and the scan instead swallows the NEXT test's START-marker Dispatched row (same opcode), which exists in the replayed record but not yet at live window close. Without an `opCode` argument on those rows fth attributes every dispatcher row to the marker; the plan therefore declares event_patterns for cmdDisp.OpCodeDispatched and cmdDisp.OpCodeCompleted whose `opCode` group is the row's textual token (`Opcode 0x1000001`), never the marker's integer opcode, so no dispatcher row past the END marker is attributed to it and every window ends exactly at its END marker event, live and replayed alike. The per-window `event cmdDisp.OpCodeDispatched count == N-1` predicates (A5) are unchanged: the START marker's row precedes the window, the END marker's row is inside. Known fth 0.1.2 limits recorded for the reviewer, not fixable in the harness: `fth vectors` judges with the engine, which refuses a test-owned plan (checks live in the tests), and the audit's run-start-marker step recognises only `*.Marker` events (seal.marker_ids), so it reads FAILED by construction with the NoOpStringReceived marker although the six run-start marker ids (0xFFFF0001 + manifest sha8, 0xFFFF0002 + seal, 0xFFFF0003 + crc32(run id)) are in every record. No pass rule, threshold or fails set weakens.",
+  "29. Harness amendment A11 (stage 2, bench-verified 2026-11-10, reviewer to confirm): on the first planted-fault vector (dry-1, L2-1 bump_wrong_amount, record f4e440f0) every failed predicate appeared twice in the runner's `failed` list, so the list was not byte-equal to the declared `fails` set (fth vectors/unseal compare sorted lists). fth 0.1.2 judges a window's plan `metrics` by name at window close AND every check() the stimulus declares; a predicate present in both is judged twice. The stimulus therefore no longer re-declares the plan's `metrics` strings (49 check() calls removed); it declares only what the plan cannot judge by name — the completeness preconditions (STD, commands_sent, OpCodeDispatched count), the ABS group and the helper-bound checks (A7). The set of judged predicates per window is unchanged (verify-plan --tests still harvests every planted-fault `fails` predicate as declared); no pass rule, threshold or fails set weakens.",
+  "30. Harness amendment A12 (stage 2, bench-verified 2026-11-10, reviewer to confirm): vector dry-3 (L5-1 with bump_zero, record 8772425e...) read UNVERIFIED instead of FAIL: the stimulus paced on `bench.wait_event(\"rustCounter.Saturated\")`, an event the planted fault suppresses, fth's wait raised TimeoutError inside the window, the END marker went out from the plugin's finally but THRESHOLD_PRM_SET(100) was never sent, and the completeness precondition `commands_sent == 7` read 6 — an infrastructure UNVERIFIED masking the planted fault's FAIL. The same pattern exists where skip_reset suppresses ResetIssued (L2-1, L7-1) and threshold_not_set suppresses Saturated (L2-2). Those five pacing waits become `bench.wait(2.0)`: send() already waits for the command's OpCodeCompleted/OpCodeDispatched rows (the UUT emits ResetIssued/Bumped/Saturated synchronously in the handler, before completion), so pacing is unchanged for the clean run, and the checks — judged from the record, not from the waits — still require the events (`event rustCounter.Saturated(value=3, threshold=3) count == 1` etc.). No pass rule, threshold or fails set weakens.",
+  "31. Harness amendment A13 (stage 2, bench-verified 2026-11-10, reviewer to confirm), vectors dry-7/dry-8 after A12. (a) dry-7 (L7-1 with skip_reset): `last(rustMonitor.LastCount) == 0` read `no samples of rustMonitor.LastCount` and stayed UNVERIFIED-class instead of FAIL, so the runner's failed list lacked one declared fails predicate: fth 0.1.2 promotes a sample-less check to FAIL on a complete window only for checks the stimulus declares (fth/checks.py judge()), not for plan `metrics`. That one predicate moves from L7-1's metrics to a stimulus check(); its text and the fails set are unchanged. (b) dry-8 (L7-1 with threshold_not_saved): `PrmDb.dat record 0x10016000 == 42`, `event fileDownlink.FileSent count == 1` and `event cmdDisp.OpCodeError count == 0` held although PRM_SAVE_FILE was never sent, because the deployment's PrmDb.dat (written in the app's working directory run/FprimeRustReference/) survived from the previous run; bench/native_flash.py now empties the install directory before installing the executable, as bench.json's provenance note already states (fresh PrmDb.dat per run), so the absent-file FAIL the plan requires is reachable. No pass rule, threshold or fails set weakens.",
+  "32. Harness amendment A14 (stage 2, bench-verified 2026-11-10, reviewer to confirm). (a) Vector dry-8 (L7-1 with threshold_not_saved, record after A13): the absent-file FAIL now occurs (`PrmDb.dat record 0x10016000 == 42` FAIL, `event fileDownlink.FileSent count == 1` FAIL, `event prmDb.PrmFileSaveComplete(records=1) count == 1` FAIL) but the fourth declared predicate `event cmdDisp.OpCodeError count == 0` held: the record shows FileHandling.fileDownlink.FileOpenError WARNING_HI `Could not open file PrmDb.dat` and no OpCodeError, because Svc.FileDownlink's SendFile is a queued request acknowledged OK before the open. The fault's L7-1 fails entry swaps that predicate for `event fileDownlink.FileOpenError count == 0`, which the L7-1 stimulus now declares as a check (clean record: 0 FileOpenError); the set keeps four predicates, three of them unchanged — nothing that failed before stops failing. (b) Stage-3 rehearsal reh2 (manifest 76fb96c5, record 018de76e): L2-4 diverged, runner PASS `delta=10 (first=87 C1375; last=97 C1546)` vs replay FAIL `delta=11 (first=87 C1375; last=98 C1548)`. L2-4 `delta(rustCounter.TickCount) in 7..10` / `delta(rustMonitor.RunCount) in 7..10` become `in 7..11`. The rate group is 1 Hz (Main.cpp startRateGroups(TimeInterval(1,0)), divider 1; TickCount samples 1.000 s apart in every record). The window is START marker event .. END marker event; the stimulus between them is bracket (2 fresh samples: 1-2 s), wait 5 s, bracket (2 fresh samples: 1-2 s) plus the two marker command latencies, i.e. 7-9 s of stimulus, and the END marker event can land after one more 1 Hz tick, so the recorded advance is 7..11 (reh2 sealed record: 11, first=87 C1375 last=98 C1548; the live view read 10 because the recorder had not flushed the last row — the record is the oracle). The lower bound 7 is unchanged: a stalled or half-rate group (<= 4) and a doubled rate group (>= 14) are still rejected. This is a pass-rule threshold change and is submitted to the human gate with A8 (4..8 -> 7..10, an arithmetic slip against the plan's own procedure), not confirmed by the reviewer alone. (Rationale rewritten after reviewer round 1 S-5; the earlier text stated a wrong rate-group frequency.)",
+  "33. Harness amendment A15 (stage 2, reviewer round 1, 2026-11-10, reviewer to confirm). Harness-local, no pass rule weakened. (F-1) `helpers_kat.py` adds known-answer tests for every helper predicate, pass and fail paths, through real fth Record/Window/HelperContext objects on synthetic rows: delta_in_range (delta == lo, == hi, lo-1, hi+1, negative, < 2 samples -> UNVERIFIED), counter_advances (baseline before START, boot value 0, silent window with by=0/by=1, no START marker -> UNVERIFIED), version_payloads_present (good, empty, UNKNOWN, absent event), prmdb_record_equals on the dev-clean 17-byte PrmDb.dat (4ceb3a87 a5 00000008 10016000 0000002a: as-is PASS; wrong value, flipped CRC byte, unrecomputed body byte, bad delimiter, missing id, 3-byte file, absent file -> FAIL, absent file FAIL not UNVERIFIED). The file name is outside pytest's `test_*.py` glob so `fth run`/`verify-plan` do not collect it; run with `python -m pytest test/int/helpers_kat.py -q` (README). (S-1) the same module asserts that every `rationale[].pred` tagged stimulus-declared is harvested from the stimulus (`fth.junit.harvest_check_names`), guarding the A7 helper checks that are in no fails set. (S-3) `version_payloads_present` returns FAIL (not UNVERIFIED) when a named Svc.Version event is absent — strictly stronger; L6-1 rationale documents that `Exceedances advances by 0` is satisfied by silence. (S-6) L0-2 gains the two ordering metrics its evidence already claimed: NoOpStringReceived(id=20) precedes (id=42) precedes (id=21) — added metrics, nothing removed. (S-2/S-5) L2-4 rationale text corrected to lo=7, hi=11 and the 1 Hz explanation; decision 32(b) rewritten. (S-4) A8 and A14(b) are flagged for the human gate in the hand-off. (S-7) REQ-FprimeRust-015 observability is a UUT/design-lane note for the anchor, not a harness change.",
+  "34. Harness amendment A16 (stage 2 re-entry on reference campaign/dev e589b00b / fprime-rust cecc0c41, 2026-11-10, reviewer to confirm; supersedes decision 6 and amendment A4's marker choice): the DEVELOPMENT child added the harness tester FprimeRustReference.RustTester (instance rustTester, sync command MARK(id: U32) -> event rustTester.Marker `Marker {}`), so markers are command rustTester.MARK / event rustTester.Marker / arg id with event pattern `^Marker (?P<id>\\d+)$`; L0-2 counts and orders rustTester.Marker events. fth 0.1.2's run-start markers (0xFFFF0001 + manifest sha8, 0xFFFF0002 + seal sha8, 0xFFFF0003 + crc32(run id), fth/seal.py marker_ids) are U32 ids of a `*.Marker` event and are now recognised by `fth audit --tests` and `fth unseal`; the CMD_NO_OP_STRING marker and its NoOpStringReceived pattern are retired. bench/native_send.py keeps resolving short names and integer arguments (A4) for every command. The dispatcher-row completeness predicates of A5/A10 are re-derived from the first record on this image (A17b below): the record is the oracle.",
+  "35. Harness amendment A17 (stage 2 re-entry, 2026-11-10, reviewer to confirm; strengthening): RustCounter publishes `ThresholdValid: Fw.ParamValid` (channel 0x10016002, written with every Counter sample; REQ-RustCounter-007, D3). L2-2 and L5-1 gain the metric `last(rustCounter.ThresholdValid) == VALID` and cover REQ-RustCounter-007; packet RustReference lists rustCounter.ThresholdValid (same cadence as Counter, so the `RustReference samples >= 2` completeness holds unchanged). Nothing removed.",
+  "36. Harness amendment A18 (stage 2 re-entry, 2026-11-10, reviewer to confirm; anchor ruling T5): coverage.ut.scope and coverage.system.scope restated to exactly what fth judges — the UT fixture project's gcovr and the twin's `fth coverage-system` with the three filters, the third one EXCLUDING the FPP `*Ac.cpp` autocode (F Prime output, not the UUT's; the hand-written RustTester.cpp carries no counters). Thresholds unchanged: ut 95/85, system 75. The reviewer confirms the filter choice; the honest figure is reported whatever it is and a shortfall is a finding, never an added acknowledgement. (S-10, cycle 3: the first filter excludes the harness tester, `FprimeRustReference/Components/(?!RustTester/)` — RustTester.cpp is harness code, not UUT output; it carries no counters, so the judged figures are unchanged.)",
+  "37. Harness amendment A17b (stage 2 re-entry, record 30a78bf5 on the rustTester image, 2026-11-10, reviewer to confirm): the per-window dispatcher-row predicates of A5/A10 (`event cmdDisp.OpCodeDispatched count == N-1`, textual opCode patterns) stay exact with the synchronous rustTester.MARK: Svc.CommandDispatcher logs OpCodeDispatched before the handler emits Marker, so the START marker's own dispatch row precedes the START event (outside the window) and the END marker's lies inside — deterministically N-1, verified on every test of record 30a78bf5 (11 PASS) and the nine development plants. The record is the oracle; nothing changed. (S-9 correction, cycle 3: the mechanism sentence was wrong — Svc/CmdDispatcher/CommandDispatcherImpl.cpp:148 calls compCmdSend_out and only then :150 logs OpCodeDispatched, so for the synchronous MARK the order is Marker -> OpCodeDispatched -> OpCodeCompleted: the START marker's dispatch row is INSIDE the window and the END marker's is OUTSIDE (fth closes the window at the END Marker event). The predicate `OpCodeDispatched count == N-1` is unchanged and exact on every record.)",
+  "38. Harness amendment A20 (stage 2 re-entry, 2026-11-10, reviewer to confirm; harness-local): (a) `version_payloads_present` reads the payload as str(): the project describe of a tip whose short hash is all digits (record 8d51ebbe: `Project Version: [2890560]`) is normalised to int by fth's to_value and `.upper()` raised; the KAT gains the int payload case. (b) bench/native_recorder.py writes each read batch in FSW-stamp order (stable): fprime-cli prints rows in arrival order and two UUT threads inverted two rows by 6 us (record 8d51ebbe L147/L148), failing the record-integrity step; rows, names and payloads are unchanged, only the order within a batch.",
+  "39. Harness amendment A21 (stage 2 re-entry, 2026-11-10; PASS-RULE THRESHOLD CHANGE -> HUMAN GATE with A8/A14(b), reviewer to confirm the arithmetic only): L4-1 `delta(rustCounter.TickCount) in 55..65` / `delta(rustMonitor.RunCount) in 55..65` become `in 55..67`. Eight records on the rustTester image read 63, 64, 64, 64, 65, 65, 65 and 66 (re-dry-3, L5-1=bump_zero plant, L4-1 FAILED only on this bound), and re-dry-5 read 65 live but 66 on replay (the A14(b) pattern: the live view judged before the recorder flushed the last row; the record is the oracle): the window is START marker event .. END marker event around a 60 s wait plus two 1 Hz brackets (1-2 s each) and the marker latencies, i.e. 62-66 s, and the END event can land after one more tick — the same geometry A8/A14(b) established for L2-4 (7..11 around 5 s). 55..65 was centred on the bare 60 s wait. The lower bound is unchanged; a stalled or half-rate group (<= 30) and a doubled group (>= 120) are still rejected. The record is the oracle.",
+  "40. Harness amendment A22 (stage 2 re-cycle, 2026-11-10; TEST-LIST ADDITION -> HUMAN GATE with A8/A14(b)/A21, anchor ruling route (c)): new test L6-2 'SET_LIMIT queue-full -> BUSY' covering REQ-FprimeRust-032 and REQ-RustMonitor-007 (previously Unit Test only) and REQ-RustMonitor-001. Feasibility: fth 0.1.2 sends one fprime-cli process per command (>= 0.5 s each, serialized), so a 12-command burst within one 1 Hz period is impossible from the stimulus; the deployment-side harness tester command rustTester.BURST_CMD_U32(count, opcode, arg) emits the burst into cmdDisp's sequencer port inside one dispatch (deterministic, dispatcher-tracked, one fth send, replay-faithful). not_covered_ack rewritten to -030/-031/-033; planted fault burst_too_small (count 10 -> no BUSY) fails exactly {event cmdDisp.OpCodeError(error=BUSY) count == 2}. Plan rule (also README): never burst an opcode whose target component lacks a hook/drop overflow policy for it (an async command without hook asserts when the burst exceeds its queue = FATAL in the twin); burst only hook-protected commands such as SET_LIMIT, count <= 12. Setup precondition: no rustCounter command in the preceding 2 s (countOut shares the monitor queue). Nothing weakened. Correction (re-clean5, record 89daf511: 12/12 UNVERIFIED `RustReference samples >= 2`): the deployment packet RustReference carries BurstResponsesOk/Error (Packets.fppi), but a plan packet is fth's named channel set for `samples >= n` = min row count over the set, and RustTester writes the two channels only after a burst -> they form their own set RustTesterBurst (L6-2: `RustTesterBurst samples >= 1`); the plan's RustReference set is the dictionary packet minus those two.",
+  "41. Harness amendment A19 (recorded here per reviewer S-11; previously only in gcov-dump/plan.json decision 1 and the bench notes): coverage-dump plan test/int/gcov-dump/ (one test D-1: rustTester markers, paced `DUMP_COVERAGE start 8` for start 0, 8, 16, ... until CoverageDumpDone, never retrying window 0, checks CoverageRejected == 0, CoverageUnavailable == 0, cmdDisp.OpCodeError == 0, EventsDropped delta 0), bench-cov.json (flash `--clear-gcda <twin cache>` + `DUMP_COVERAGE 0 0` once before the coverage run) and bench-dump.json (no clear), bench/native_flash.py `--clear-gcda`. Harness-measurement plan only, never RfR. (S-12 closure, cycle 3: D-1's completion is judged as a record fact, `event rustTester.CoverageDumpDone count == 1`, and the paced loop is bounded by a record-independent window count.)"
+ ],
+ "tests": [
+  {
+   "id": "L0-1",
+   "title": "Image identity",
+   "purpose": "Confirms the running executable reports non-empty project, framework and library version strings for the delivery manifest check.",
+   "covers": [],
+   "covers_note": "— (entry gate; image_version policy required: fth deliver/audit compare these payloads and the dictionary metadata with manifest repos[].describe)",
+   "setup": "Image installed by flash, GDS attached, ≥ 2 s after start.",
+   "procedure": [
+    "MARK(10)",
+    "bracket (2 samples)",
+    "CdhCore.version.VERSION(ALL)",
+    "bracket",
+    "MARK(11)"
+   ],
+   "windows": [
+    {
+     "name": "W",
+     "start_id": 10,
+     "end_id": 11,
+     "reset": false
+    }
+   ],
+   "metrics": [
+    "event version.ProjectVersion count == 1",
+    "event version.FrameworkVersion count == 1",
+    "event version.LibraryVersions count == 1",
+    "event cmdDisp.OpCodeError count == 0"
+   ],
+   "rationale": [
+    {
+     "pred": "event version.LibraryVersions count == 1",
+     "text": "one library (lib/fprime-rust) is registered in settings.ini library_locations, so Svc.Version emits one LibraryVersions event; fth v0.1.2 has no manifest-substituted predicate, so equality with manifest repos[].describe is the deliver/audit dictionary-describe check (fth audit.dictionary_describe_check), recorded here as the image_version policy"
+    },
+    {
+     "pred": "version payloads of ProjectVersion, FrameworkVersion, LibraryVersions are non-empty and not UNKNOWN",
+     "text": "stimulus-declared helper check `version_payloads_present(events=[\"version.ProjectVersion\", \"version.FrameworkVersion\", \"version.LibraryVersions\"])` (A7: fth 0.1.2 judges plan `metrics` by text alone, so a helper-bound check is declared by the test with check(text, helper) and bound through this plan's helpers module)"
+    }
+   ],
+   "knobs": [],
+   "evidence": "ProjectVersion, FrameworkVersion and LibraryVersions events with non-empty payloads; describe equality judged at deliver/unseal."
+  },
+  {
+   "id": "L0-2",
+   "title": "Marker round-trip",
+   "purpose": "Proves the harness tester's MARK command round-trips through the command path (rustTester.Marker) so every later window can be bracketed.",
+   "covers": [],
+   "covers_note": "— (entry gate; harness completeness)",
+   "setup": "As L0-1.",
+   "procedure": [
+    "MARK(20)",
+    "bracket (2 samples)",
+    "MARK(42)",
+    "bracket",
+    "MARK(21)"
+   ],
+   "windows": [
+    {
+     "name": "W",
+     "start_id": 20,
+     "end_id": 21,
+     "reset": false
+    }
+   ],
+   "metrics": [
+    "event rustTester.Marker count == 3",
+    "event rustTester.Marker(id=20) precedes event rustTester.Marker(id=42)",
+    "event rustTester.Marker(id=42) precedes event rustTester.Marker(id=21)",
+    "event cmdDisp.OpCodeError count == 0"
+   ],
+   "rationale": [],
+   "knobs": [],
+   "evidence": "Three rustTester.Marker events in order (20, 42, 21)."
+  },
+  {
+   "id": "L2-1",
+   "title": "Rust command, event and telemetry paths",
+   "purpose": "Resets and bumps the Rust active component to prove async commands dispatch into Rust and events and telemetry come back out.",
+   "covers": [
+    "REQ-FprimeRust-008",
+    "REQ-FprimeRust-012",
+    "REQ-FprimeRust-013",
+    "REQ-FprimeRust-014",
+    "REQ-RustCounter-001",
+    "REQ-RustCounter-002",
+    "REQ-RustCounter-004"
+   ],
+   "covers_note": "",
+   "setup": "L0-2 passed; THRESHOLD at default 100.",
+   "procedure": [
+    "MARK(30)",
+    "bracket (2 samples)",
+    "rustCounter.RESET()",
+    "rustCounter.BUMP(7)",
+    "rustCounter.BUMP(5)",
+    "bracket (2 samples)",
+    "MARK(31)"
+   ],
+   "windows": [
+    {
+     "name": "W",
+     "start_id": 30,
+     "end_id": 31,
+     "reset": false
+    }
+   ],
+   "metrics": [
+    "event rustCounter.ResetIssued count == 1",
+    "event rustCounter.Bumped(value=7) count == 1",
+    "event rustCounter.Bumped(value=12) count == 1",
+    "event rustCounter.ResetIssued precedes event rustCounter.Bumped(value=7)",
+    "last(rustCounter.Counter) == 12",
+    "event rustCounter.Saturated count == 0",
+    "event cmdDisp.OpCodeError count == 0"
+   ],
+   "rationale": [],
+   "knobs": [
+    "bump_wrong_amount",
+    "skip_reset"
+   ],
+   "evidence": "ResetIssued, Bumped(7), Bumped(12); Counter 12; no Saturated; no command error."
+  },
+  {
+   "id": "L2-2",
+   "title": "Parameter read from Rust",
+   "purpose": "Sets THRESHOLD to 5 and bumps past it to prove the Rust handler reads the parameter and saturates on it.",
+   "covers": [
+    "REQ-FprimeRust-015",
+    "REQ-RustCounter-003",
+    "REQ-RustCounter-006",
+    "REQ-RustCounter-007"
+   ],
+   "covers_note": "",
+   "setup": "L2-1 passed (opens with RESET, so L2-1's planted faults do not ripple here).",
+   "procedure": [
+    "MARK(40)",
+    "bracket (2 samples)",
+    "rustCounter.RESET()",
+    "rustCounter.THRESHOLD_PRM_SET(5)",
+    "rustCounter.BUMP(9)",
+    "rustCounter.THRESHOLD_PRM_SET(100)",
+    "bracket (2 samples)",
+    "MARK(41)"
+   ],
+   "windows": [
+    {
+     "name": "W",
+     "start_id": 40,
+     "end_id": 41,
+     "reset": false
+    }
+   ],
+   "metrics": [
+    "event rustCounter.Saturated(value=5, threshold=5) count == 1",
+    "last(rustCounter.Counter) == 5",
+    "event rustCounter.Bumped count == 0",
+    "last(rustCounter.ThresholdValid) == VALID",
+    "event cmdDisp.OpCodeError count == 0"
+   ],
+   "rationale": [
+    {
+     "pred": "event rustCounter.Saturated(value=5, threshold=5) count == 1",
+     "text": "THRESHOLD is read on every BUMP (RustCounter §Behavior), so the set value takes effect without a restart"
+    },
+    {
+     "pred": "last(rustCounter.ThresholdValid) == VALID",
+     "text": "REQ-RustCounter-007: RustCounter publishes the THRESHOLD validity it read (Fw.ParamValid) with every Counter sample; after THRESHOLD_PRM_SET the window's last sample must read VALID (A17)"
+    }
+   ],
+   "knobs": [
+    "threshold_not_set"
+   ],
+   "evidence": "Saturated(5, 5); Counter 5; no Bumped. ThresholdValid VALID after THRESHOLD_PRM_SET."
+  },
+  {
+   "id": "L2-3",
+   "title": "Rust to C++ to Rust port chain",
+   "purpose": "Bumps the Rust counter and follows the count through the C++ relay into the Rust monitor to prove typed ports in both directions.",
+   "covers": [
+    "REQ-FprimeRust-009",
+    "REQ-FprimeRust-010",
+    "REQ-FprimeRust-011",
+    "REQ-RustCounter-002",
+    "REQ-RustCounter-004",
+    "REQ-RustMonitor-003",
+    "REQ-Relay-001",
+    "REQ-Relay-002"
+   ],
+   "covers_note": "",
+   "setup": "L2-1 passed; rustMonitor limit at initial 4294967295.",
+   "procedure": [
+    "MARK(50)",
+    "bracket (2 samples)",
+    "rustCounter.RESET()",
+    "rustCounter.BUMP(3)",
+    "wait 2 s",
+    "bracket (2 samples)",
+    "MARK(51)"
+   ],
+   "windows": [
+    {
+     "name": "W",
+     "start_id": 50,
+     "end_id": 51,
+     "reset": false
+    }
+   ],
+   "metrics": [
+    "event rustCounter.Bumped(value=3) count == 1",
+    "last(rustMonitor.LastCount) == 3",
+    "event rustMonitor.LimitExceeded count == 0",
+    "event cmdDisp.OpCodeError count == 0"
+   ],
+   "rationale": [
+    {
+     "pred": "relay.Relayed advances by 2",
+     "text": "stimulus-declared helper check `counter_advances(channel=\"relay.Relayed\", by=2)` (A7: fth 0.1.2 judges plan `metrics` by text alone, so a helper-bound check is declared by the test with check(text, helper) and bound through this plan's helpers module); RESET and BUMP each send countOut once: Rust→C++ counted by the C++ relay, C++→Rust seen as LastCount after the next 1 Hz run"
+    }
+   ],
+   "knobs": [
+    "bump_wrong_amount"
+   ],
+   "evidence": "Bumped(3); Relayed +2; LastCount 3."
+  },
+  {
+   "id": "L2-4",
+   "title": "Rate-group ports into Rust",
+   "purpose": "Lets the 1 Hz rate group tick the active Rust component and run the queued Rust component to prove C++ scheduler ports into Rust handlers.",
+   "covers": [
+    "REQ-FprimeRust-008",
+    "REQ-FprimeRust-009",
+    "REQ-FprimeRust-011",
+    "REQ-FprimeRust-014",
+    "REQ-RustCounter-005",
+    "REQ-RustMonitor-005"
+   ],
+   "covers_note": "",
+   "setup": "L0-2 passed.",
+   "procedure": [
+    "MARK(60)",
+    "bracket (2 samples)",
+    "wait 5 s",
+    "bracket (2 samples)",
+    "MARK(61)"
+   ],
+   "windows": [
+    {
+     "name": "W",
+     "start_id": 60,
+     "end_id": 61,
+     "reset": false
+    }
+   ],
+   "metrics": [
+    "event cmdDisp.OpCodeError count == 0"
+   ],
+   "rationale": [
+    {
+     "pred": "delta(rustCounter.TickCount) in 7..11",
+     "text": "stimulus-declared helper check `delta_in_range(channel=\"rustCounter.TickCount\", lo=7, hi=11)` (A7: fth 0.1.2 judges plan `metrics` by text alone, so a helper-bound check is declared by the test with check(text, helper) and bound through this plan's helpers module); the rate group is 1 Hz (Main.cpp startRateGroups(Fw::TimeInterval(1, 0)), divider 1 in FprimeRustReferenceTopology.cpp; TickCount samples 1.000 s apart in every record); the window is START marker event .. END marker event and the stimulus between them is a bracket of two fresh samples (1-2 s), wait 5 s, a bracket of two fresh samples (1-2 s) plus the two marker command latencies, i.e. 7-9 s of stimulus, and the END marker event can land after one more 1 Hz tick, so the recorded advance is 7..11 (A8, A14(b): the record is the oracle); the lower bound 7 still rejects a stalled or half-rate group (<= 4) and the upper bound 11 a doubled one (>= 14)"
+    },
+    {
+     "pred": "delta(rustMonitor.RunCount) in 7..11",
+     "text": "stimulus-declared helper check `delta_in_range(channel=\"rustMonitor.RunCount\", lo=7, hi=11)` (A7, same binding); same 1 Hz rate group and window as TickCount, hence the same 7..11"
+    }
+   ],
+   "knobs": [],
+   "evidence": "TickCount and RunCount each advance 7..11 over the window."
+  },
+  {
+   "id": "L2-5",
+   "title": "Queued Rust command and limit exceedance",
+   "purpose": "Sets the monitor limit then bumps past it to prove a queued Rust component handles commands and raises a warning event from a relayed count.",
+   "covers": [
+    "REQ-FprimeRust-008",
+    "REQ-FprimeRust-012",
+    "REQ-FprimeRust-013",
+    "REQ-RustMonitor-001",
+    "REQ-RustMonitor-004",
+    "REQ-RustMonitor-006",
+    "REQ-RustMonitor-003"
+   ],
+   "covers_note": "",
+   "setup": "L2-3 passed.",
+   "procedure": [
+    "MARK(70)",
+    "bracket (2 samples)",
+    "rustMonitor.SET_LIMIT(4)",
+    "rustCounter.RESET()",
+    "rustCounter.BUMP(10)",
+    "wait 2 s",
+    "rustMonitor.SET_LIMIT(4294967295)",
+    "wait 2 s",
+    "bracket (2 samples)",
+    "MARK(71)"
+   ],
+   "windows": [
+    {
+     "name": "W",
+     "start_id": 70,
+     "end_id": 71,
+     "reset": false
+    }
+   ],
+   "metrics": [
+    "event rustMonitor.LimitSet(limit=4) count == 1",
+    "event rustMonitor.LimitExceeded(count=10, limit=4) count == 1",
+    "last(rustMonitor.LastCount) == 10",
+    "event rustMonitor.LimitSet count == 2",
+    "first(rustMonitor.Limit) == 4294967295",
+    "last(rustMonitor.Limit) == 4294967295",
+    "event cmdDisp.OpCodeError count == 0"
+   ],
+   "rationale": [
+    {
+     "pred": "first(rustMonitor.Limit) == 4294967295",
+     "text": "Limit is published every run, so the first sample in the window shows the initial limit before SET_LIMIT(4) is dispatched"
+    },
+    {
+     "pred": "event rustMonitor.LimitExceeded(count=10, limit=4) count == 1",
+     "text": "the count 10 reaches the queued component on the next 1 Hz run, within the 2 s wait"
+    },
+    {
+     "pred": "rustMonitor.Exceedances advances by 1",
+     "text": "stimulus-declared helper check `counter_advances(channel=\"rustMonitor.Exceedances\", by=1)` (A7: fth 0.1.2 judges plan `metrics` by text alone, so a helper-bound check is declared by the test with check(text, helper) and bound through this plan's helpers module)"
+    }
+   ],
+   "knobs": [
+    "limit_not_set"
+   ],
+   "evidence": "LimitSet(4), LimitExceeded(10, 4), Exceedances +1, limit restored."
+  },
+  {
+   "id": "L4-1",
+   "title": "Endurance 60 s",
+   "purpose": "Runs the deployment for 60 s to prove the Rust components keep servicing rate-group ports with no command errors or counter drift.",
+   "covers": [
+    "REQ-FprimeRust-014",
+    "REQ-RustCounter-005",
+    "REQ-RustMonitor-005"
+   ],
+   "covers_note": "",
+   "setup": "L2-4 passed.",
+   "procedure": [
+    "MARK(80)",
+    "bracket (2 samples)",
+    "wait 60 s",
+    "bracket (2 samples)",
+    "MARK(81)"
+   ],
+   "windows": [
+    {
+     "name": "W",
+     "start_id": 80,
+     "end_id": 81,
+     "reset": false
+    }
+   ],
+   "metrics": [
+    "delta(rustCounter.Counter) == 0",
+    "event rustCounter.Saturated count == 0",
+    "event cmdDisp.OpCodeError count == 0"
+   ],
+   "rationale": [
+    {
+     "pred": "delta(rustCounter.TickCount) in 55..67",
+     "text": "stimulus-declared helper check `delta_in_range(channel=\"rustCounter.TickCount\", lo=55, hi=67)` (A7: fth 0.1.2 judges plan `metrics` by text alone, so a helper-bound check is declared by the test with check(text, helper) and bound through this plan's helpers module); 1 Hz (Main.cpp, divider 1) over 60 s with scheduler jitter margin"
+    },
+    {
+     "pred": "delta(rustMonitor.RunCount) in 55..67",
+     "text": "stimulus-declared helper check `delta_in_range(channel=\"rustMonitor.RunCount\", lo=55, hi=67)` (A7: fth 0.1.2 judges plan `metrics` by text alone, so a helper-bound check is declared by the test with check(text, helper) and bound through this plan's helpers module)"
+    }
+   ],
+   "knobs": [],
+   "evidence": "55..67 ticks and runs; Counter unchanged."
+  },
+  {
+   "id": "L5-1",
+   "title": "Saturation fault path",
+   "purpose": "Drives the counter into THRESHOLD saturation to prove the Rust warning event and the clamp.",
+   "covers": [
+    "REQ-FprimeRust-013",
+    "REQ-FprimeRust-015",
+    "REQ-RustCounter-003",
+    "REQ-RustCounter-006",
+    "REQ-RustCounter-007"
+   ],
+   "covers_note": "",
+   "setup": "L2-2 passed.",
+   "procedure": [
+    "MARK(90)",
+    "bracket (2 samples)",
+    "rustCounter.RESET()",
+    "rustCounter.THRESHOLD_PRM_SET(3)",
+    "rustCounter.BUMP(2)",
+    "rustCounter.BUMP(2)",
+    "rustCounter.THRESHOLD_PRM_SET(100)",
+    "bracket (2 samples)",
+    "MARK(91)"
+   ],
+   "windows": [
+    {
+     "name": "W",
+     "start_id": 90,
+     "end_id": 91,
+     "reset": false
+    }
+   ],
+   "metrics": [
+    "event rustCounter.Bumped(value=2) count == 1",
+    "event rustCounter.Saturated(value=3, threshold=3) count == 1",
+    "last(rustCounter.Counter) == 3",
+    "event rustCounter.Bumped(value=2) precedes event rustCounter.Saturated(value=3, threshold=3)",
+    "last(rustCounter.ThresholdValid) == VALID",
+    "event cmdDisp.OpCodeError count == 0"
+   ],
+   "rationale": [
+    {
+     "pred": "last(rustCounter.ThresholdValid) == VALID",
+     "text": "REQ-RustCounter-007: RustCounter publishes the THRESHOLD validity it read (Fw.ParamValid) with every Counter sample; after THRESHOLD_PRM_SET the window's last sample must read VALID (A17)"
+    }
+   ],
+   "knobs": [
+    "bump_zero"
+   ],
+   "evidence": "Bumped(2) then Saturated(3, 3); Counter 3. ThresholdValid VALID after THRESHOLD_PRM_SET."
+  },
+  {
+   "id": "L6-1",
+   "title": "Negative control: SET_LIMIT(0) rejected",
+   "purpose": "Sends an invalid limit to prove the Rust handler rejects it with a validation error and changes nothing else.",
+   "covers": [
+    "REQ-FprimeRust-012",
+    "REQ-FprimeRust-013",
+    "REQ-RustMonitor-002",
+    "REQ-RustMonitor-006"
+   ],
+   "covers_note": "",
+   "setup": "L2-5 passed; limit at 4294967295.",
+   "procedure": [
+    "MARK(100)",
+    "bracket (2 samples)",
+    "rustMonitor.SET_LIMIT(0)",
+    "wait 2 s",
+    "bracket (2 samples)",
+    "MARK(101)"
+   ],
+   "windows": [
+    {
+     "name": "W",
+     "start_id": 100,
+     "end_id": 101,
+     "reset": false
+    }
+   ],
+   "metrics": [
+    "event rustMonitor.InvalidLimit(limit=0) count == 1",
+    "event cmdDisp.OpCodeError(error=VALIDATION_ERROR) count == 1",
+    "event rustMonitor.LimitSet count == 0",
+    "delta(rustMonitor.Limit) == 0",
+    "last(rustMonitor.Limit) == 4294967295",
+    "event rustCounter.Bumped count == 0"
+   ],
+   "rationale": [
+    {
+     "pred": "event cmdDisp.OpCodeError(error=VALIDATION_ERROR) count == 1",
+     "text": "negative control: the rejection is visible at the dispatcher and nothing else happened"
+    },
+    {
+     "pred": "rustMonitor.Exceedances advances by 0",
+     "text": "stimulus-declared helper check `counter_advances(channel=\"rustMonitor.Exceedances\", by=0)` (A7: fth 0.1.2 judges plan `metrics` by text alone, so a helper-bound check is declared by the test with check(text, helper) and bound through this plan's helpers module); a change-driven channel is sent only when written, so `advances by 0` is satisfied by silence (no Exceedances sample in the window) — backed by `event rustMonitor.LimitSet count == 0` and `delta(rustMonitor.Limit) == 0` (A15 / review S-3)"
+    }
+   ],
+   "knobs": [
+    "negative_wrong_limit"
+   ],
+   "evidence": "InvalidLimit(0), one OpCodeError(VALIDATION_ERROR), Limit and Exceedances unchanged."
+  },
+  {
+   "id": "L6-2",
+   "title": "SET_LIMIT queue-full -> BUSY (overflow hook)",
+   "purpose": "Bursts twelve SET_LIMIT commands into the queued Rust monitor within one dispatch to prove the component queue fills at ten and the Rust overflow hook answers BUSY for the rest, with no assert, no silent drop and a later SET_LIMIT accepted.",
+   "covers": [
+    "REQ-FprimeRust-032",
+    "REQ-RustMonitor-001",
+    "REQ-RustMonitor-007"
+   ],
+   "covers_note": "the burst is issued by the harness tester (rustTester.BURST_CMD_U32) through cmdDisp's sequencer port, so the dispatcher itself logs OpCodeDispatched/Completed/OpCodeError(BUSY) for every command",
+   "setup": "L6-1 passed; limit at 4294967295; no rustCounter command in the preceding 2 s and >= 1 s since any previous burst (rustCounter.countOut shares RustMonitor's 10-deep queue: a BUMP/RESET in the preceding second makes copy 10 BUSY too; lens measured 8/8 bursts -> exactly 2 BUSY under this precondition).",
+   "procedure": [
+    "MARK(105)",
+    "bracket (2 samples)",
+    "rustTester.BURST_CMD_U32(12, 268529664, 7)",
+    "wait 2 s",
+    "rustMonitor.SET_LIMIT(9)",
+    "wait 2 s",
+    "bracket (2 samples)",
+    "MARK(106)"
+   ],
+   "windows": [
+    {
+     "name": "W",
+     "start_id": 105,
+     "end_id": 106,
+     "reset": false
+    }
+   ],
+   "knobs": [
+    "burst_too_small"
+   ],
+   "evidence": "A22: to be recorded from the re-cycle clean record and the burst_too_small vector",
+   "metrics": [
+    "event rustTester.BurstSent(count=12) count == 1",
+    "event cmdDisp.OpCodeError(error=BUSY) count == 2",
+    "event rustMonitor.LimitSet(limit=7) count == 10",
+    "event rustMonitor.LimitSet(limit=9) count == 1",
+    "event cmdDisp.OpCodeError(error=VALIDATION_ERROR) count == 0",
+    "event cmdDisp.CommandDroppedQueueOverflow count == 0",
+    "event CdhCore.events.EventsDropped count == 0",
+    "last(rustMonitor.Limit) == 9",
+    "RustTesterBurst samples >= 1",
+    "last(rustTester.BurstResponsesOk) == 10",
+    "last(rustTester.BurstResponsesError) == 2",
+    "event rustCounter.Bumped count == 0"
+   ],
+   "rationale": [
+    {
+     "pred": "event cmdDisp.OpCodeError(error=BUSY) count == 2",
+     "text": "queue depth Default.QUEUE_SIZE = 10 (instances.fpp:25), drained once per 1 Hz run: twelve commands emitted inside one dispatch land in one period, ten queue, two are answered BUSY by the overflow hook (RustMonitor.rs SET_LIMIT_overflow_hook) and surface as cmdDisp.OpCodeError(error=BUSY) (CommandDispatcherImpl.cpp:84-89). Both handlers run on cmdDisp's thread inside one dispatch, so the burst never straddles a run(); the only other queue user is rustCounter.countOut (async drop), excluded by the setup precondition (A22)"
+    },
+    {
+     "pred": "event rustMonitor.LimitSet(limit=7) count == 10",
+     "text": "every queued command is delivered on the next run (REQ-RustMonitor-005); ten accepted limits = ten LimitSet(7)"
+    },
+    {
+     "pred": "event rustMonitor.LimitSet(limit=9) count == 1",
+     "text": "after the burst the queue is empty again: a later SET_LIMIT completes normally (no stuck BUSY state)"
+    },
+    {
+     "pred": "event cmdDisp.CommandDroppedQueueOverflow count == 0",
+     "text": "the 12-command burst fits cmdDisp's 20-deep queue (CdhCoreConfig.fpp:9); EventsDropped == 0: the burst's 17 events fit the 40-deep events queue"
+    }
+   ]
+  },
+  {
+   "id": "L7-1",
+   "title": "Final state",
+   "purpose": "Saves THRESHOLD 42 into the parameter file, downlinks the file into the record and resets the counter to leave the deployment in an independently verifiable state.",
+   "covers": [
+    "REQ-FprimeRust-010",
+    "REQ-FprimeRust-011",
+    "REQ-RustCounter-001",
+    "REQ-RustCounter-004",
+    "REQ-Relay-001",
+    "REQ-Relay-002",
+    "REQ-RustMonitor-003"
+   ],
+   "covers_note": "final-state evidence (THRESHOLD persistence in PrmDb.dat) is owned by the autocoded parameter base + Svc.PrmDb, not traced to a component row (decision log 11)",
+   "setup": "All earlier tests run.",
+   "procedure": [
+    "MARK(110)",
+    "bracket (2 samples)",
+    "rustCounter.THRESHOLD_PRM_SET(42)",
+    "rustCounter.THRESHOLD_PRM_SAVE()",
+    "FileHandling.prmDb.PRM_SAVE_FILE()",
+    "wait 2 s",
+    "FileHandling.fileDownlink.SendFile(PrmDb.dat, PrmDb.dat)",
+    "wait 5 s",
+    "rustCounter.RESET()",
+    "bracket (2 samples)",
+    "MARK(111)",
+    "action: the recorder's GDS stores downlinked files under {logs}/files (bench gds --file-storage-directory), i.e. record/raw/files/fprime-downlink/PrmDb.dat; the prmdb_record_equals check parses it (CRC32, 0xA5 delimiter, U32 record size, FwPrmIdType id, value; Svc/PrmDb/docs/sdd.md §3.2)"
+   ],
+   "windows": [
+    {
+     "name": "W",
+     "start_id": 110,
+     "end_id": 111,
+     "reset": false
+    }
+   ],
+   "metrics": [
+    "event prmDb.PrmFileSaveComplete(records=1) count == 1",
+    "event fileDownlink.FileSent count == 1",
+    "event rustCounter.ResetIssued count == 1",
+    "last(rustCounter.Counter) == 0",
+    "event cmdDisp.OpCodeError count == 0"
+   ],
+   "rationale": [
+    {
+     "pred": "event prmDb.PrmFileSaveComplete(records=1) count == 1",
+     "text": "THRESHOLD is the only parameter in the deployment, so the saved file holds exactly one record"
+    },
+    {
+     "pred": "relay.Relayed advances by 1",
+     "text": "stimulus-declared helper check `counter_advances(channel=\"relay.Relayed\", by=1)` (A7: fth 0.1.2 judges plan `metrics` by text alone, so a helper-bound check is declared by the test with check(text, helper) and bound through this plan's helpers module); the reset count 0 travels Rust→C++→Rust one more time"
+    },
+    {
+     "pred": "PrmDb.dat record 0x10016000 == 42",
+     "text": "stimulus-declared helper check `prmdb_record_equals(path=\"files/fprime-downlink/PrmDb.dat\", id=268525568, value=42)` (A7: fth 0.1.2 judges plan `metrics` by text alone, so a helper-bound check is declared by the test with check(text, helper) and bound through this plan's helpers module)"
+    },
+    {
+     "pred": "last(rustMonitor.LastCount) == 0",
+     "text": "stimulus-declared check (A13): under skip_reset no count travels the port chain and LastCount has no sample in the window; fth 0.1.2 promotes a sample-less stimulus check to FAIL on a complete window but leaves a plan metric UNVERIFIED and out of `failed`, so the predicate is declared by the test to keep the planted fault's fails set byte-exact"
+    },
+    {
+     "pred": "event fileDownlink.FileOpenError count == 0",
+     "text": "stimulus-declared check (A14): Svc.FileDownlink queues SendFile and answers the command OK before opening the file; a missing PrmDb.dat surfaces as the asynchronous WARNING_HI FileOpenError (`Could not open file PrmDb.dat`), never as cmdDisp.OpCodeError. This is the predicate the threshold_not_saved fault fails together with the absent-file helper check."
+    }
+   ],
+   "knobs": [
+    "skip_reset",
+    "threshold_not_saved"
+   ],
+   "evidence": "PrmFileSaveComplete(1), FileSent, ResetIssued; Counter 0; LastCount 0; Relayed +1; record/raw/files/PrmDb.dat holds THRESHOLD (0x10016000) = 42."
+  }
+ ]
 }

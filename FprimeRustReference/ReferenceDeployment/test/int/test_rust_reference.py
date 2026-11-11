@@ -24,6 +24,8 @@ BUMP = "FprimeRustReference.rustCounter.BUMP"
 THRESHOLD_SET = "FprimeRustReference.rustCounter.THRESHOLD_PRM_SET"
 THRESHOLD_SAVE = "FprimeRustReference.rustCounter.THRESHOLD_PRM_SAVE"
 SET_LIMIT = "FprimeRustReference.rustMonitor.SET_LIMIT"
+SET_LIMIT_OPCODE = 268529664                       # dictionary opcode of rustMonitor.SET_LIMIT (A22 burst argument)
+BURST_CMD_U32 = "FprimeRustReference.rustTester.BURST_CMD_U32"  # harness tester: count x one Fw.Com command into cmdDisp (A22)
 PRM_SAVE_FILE = "FileHandling.prmDb.PRM_SAVE_FILE"
 SEND_FILE = "FileHandling.fileDownlink.SendFile"
 
@@ -228,6 +230,23 @@ def test_L6_1(window, send, bench, check, require, fth_plan):
         bracket(bench)
         check(ABS)
         check("rustMonitor.Exceedances advances by 0", plan_helper(fth_plan, "counter_advances", channel="rustMonitor.Exceedances", by=0))
+
+
+@pytest.mark.req("REQ-FprimeRust-032", "REQ-RustMonitor-001", "REQ-RustMonitor-007")
+def test_L6_2(window, send, bench, check, require):
+    with window(105, 106):
+        require(STD)
+        bench.wait(2.0)                                   # setup: no rustCounter command in the preceding 2 s (countOut shares the monitor queue)
+        require("commands_sent == 4")                    # sender log: the burst command, SET_LIMIT(9) and both markers
+        check("event cmdDisp.OpCodeDispatched count == 15")  # 2 fth commands + 12 burst commands + END marker (A17b)
+        bracket(bench)
+        send(BURST_CMD_U32, [12, SET_LIMIT_OPCODE, 7], wait_completion=False)  # burst_too_small acts here if L6-2 was drawn
+        bench.wait_event("rustTester.BurstSent")
+        bench.wait(2.0)                                   # one run() drains the ten queued SET_LIMITs
+        send(SET_LIMIT, [9])
+        bench.wait(2.0)
+        bracket(bench)
+        check(ABS)
 
 
 # ---- L7: final state ---------------------------------------------------------------------

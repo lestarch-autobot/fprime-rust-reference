@@ -12,6 +12,7 @@ def test_D_1(bench, window, send, check, require):
         check("event rustTester.CoverageRejected count == 0")        # declared first: judged at window close from the record
         check("event rustTester.CoverageUnavailable count == 0")
         check("event cmdDisp.OpCodeError count == 0")
+        check("event rustTester.CoverageDumpDone count == 1")   # S-12: completion is a record fact, not Python state
         send(MARK, [1])
         bench.wait_event("rustTester.Marker")
         state = {"done": False}
@@ -24,7 +25,6 @@ def test_D_1(bench, window, send, check, require):
                 state["done"] = True
                 break
             except TimeoutError:
-                continue
-        require("coverage dump done seen", lambda w: state["done"])   # infrastructure: the walk reached the end
+                continue   # infrastructure: the walk reached the end
         send(MARK, [2])
         bench.wait_event("rustTester.Marker")
