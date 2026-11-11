@@ -168,7 +168,7 @@ increments are counted.
 
 Both caches install into the same `build-artifacts/` directory, so copy the twin's `bin/` and dictionary aside
 before building the other image. The filter-to-scope mapping and the `.gcno` locations are in
-`Components/RustTester/docs/sdd.md`.
+`Components/RustTester/docs/sdd.md`. That SDD has no `## Tests` heading and no `fth:tests` markers, so `fth render-sdd-tests` leaves it untouched (reviewer note N-1): the harness tester is not a UUT component and its plan coverage is recorded in `test/int/plan.json` only (markers in every test, D-1 in `test/int/gcov-dump/`, L6-2 bursts).
 
 ## License
 
