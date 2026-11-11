@@ -204,9 +204,9 @@ def negative_wrong_limit(test_id, command_name, args):
 
 
 @planted_fault("burst_too_small", applies_to=["L6-2"], cls="stimulus",
-      mechanism="the planned BURST_CMD_U32(12, SET_LIMIT, 7) is sent as BURST_CMD_U32(10, SET_LIMIT, 7): ten commands exactly fill the queue, none is refused, so the overflow hook never answers BUSY; the ten LimitSet(7), the later SET_LIMIT(9) and the final limit are unchanged; BurstSent reads count=10, BurstResponsesOk 10 / BurstResponsesError 0",
+      mechanism="the planned BURST_CMD_U32(12, SET_LIMIT, 7) is sent as BURST_CMD_U32(10, SET_LIMIT, 7): ten commands exactly fill the queue, none is refused, so the overflow hook never answers BUSY; the ten LimitSet(7), the later SET_LIMIT(9) and the final limit are unchanged; BurstSent reads count=10, two fewer OpCodeDispatched rows (13, not 15), BurstResponsesOk still 10 (all ten copies accepted) / BurstResponsesError 0",
       fails={
-        "L6-2": ["event cmdDisp.OpCodeError(error=BUSY) count == 2", "event rustTester.BurstSent(count=12) count == 1", "last(rustTester.BurstResponsesOk) == 10", "last(rustTester.BurstResponsesError) == 2"],
+        "L6-2": ["event cmdDisp.OpCodeDispatched count == 15", "event cmdDisp.OpCodeError(error=BUSY) count == 2", "event rustTester.BurstSent(count=12) count == 1", "last(rustTester.BurstResponsesError) == 2"],
       })
 def burst_too_small(test_id, command_name, args):
     if test_id == "L6-2" and _is(command_name, "rustTester.BURST_CMD_U32") and args[0] == 12:
